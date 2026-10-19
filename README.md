@@ -448,10 +448,13 @@ ASC 的目标不是“更花哨的上下文”，而是可验证的改善。评�
 
 ---
 
+---
+
 ## ❤️ 支持本项目
 
 ASC 是一个由社区驱动的开源项目。如果它对你的工作有帮助，欢迎支持我们的持续开发与维护。
 
 <p align="center">
-  <img src="https://mobilecodec.alipay.com/show.htm?code=a6x05879sj051qvop6elred&picSize=M" alt="支付宝收款码" width="180">
+  <img src="docs/assets/wechat-qr.png" alt="微信赞赏码" width="180">
+  <img src="docs/assets/alipay-qr.png" alt="支付宝收款码" width="180">
 </p>
