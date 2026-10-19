@@ -164,8 +164,8 @@ public record StateCard(String taskId, long version,
 ### 启动服务
 
 ```bash
-git clone https://github.com/<your-org>/asc.git
-cd asc
+git clone https://github.com/JackLinkai/StateBoard.git
+cd StateBoard
 
 # 启动 PostgreSQL + Redis + ASC Server
 docker compose up -d
