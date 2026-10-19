@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 设计讨论 / 开放问题
+    url: https://github.com/JackLinkai/StateBoard/discussions
+    about: 方向性讨论、架构问题、不确定是否适合开 Issue 的想法，请走 Discussions。
+  - name: 架构文档
+    url: https://github.com/JackLinkai/StateBoard/blob/main/docs/architecture.md
+    about: 提交 Issue 前建议先阅读架构设计文档。
