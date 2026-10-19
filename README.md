@@ -6,6 +6,10 @@
 
 让 Agent 每一步都知道：什么必须遵守、什么已经确认、什么还没做、什么已经过期。
 
+<p align="center">
+  <img src="docs/assets/logo.jpg" alt="logo" width="360">
+</p>
+
 [![Status](https://img.shields.io/badge/status-early%20development-orange)](#项目状态)
 [![Java](https://img.shields.io/badge/Java-21-blue)](https://openjdk.org/projects/jdk/21/)
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.x-green)](https://spring.io/projects/spring-boot)
