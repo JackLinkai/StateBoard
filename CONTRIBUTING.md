@@ -161,10 +161,10 @@ test(governance): cover snapshot restore with conflicting facts
 
 - 新功能必须有单元测试；涉及存储和 API 的必须有集成测试。
 - 编译器相关改动必须覆盖：
-  - 硬约束不被裁剪；
-  - 事实覆盖后旧值进入 `invalidated`；
-  - TTL 过期后不再出现在 `verifiedFacts`；
-  - 预算裁剪顺序符合优先级。
+    - 硬约束不被裁剪；
+    - 事实覆盖后旧值进入 `invalidated`；
+    - TTL 过期后不再出现在 `verifiedFacts`；
+    - 预算裁剪顺序符合优先级。
 - 冲突消解策略改动必须提供“旧行为 vs 新行为”的对比用例。
 - 不要为了让测试通过而放宽断言；如果语义变了，先改文档和 Issue。
 

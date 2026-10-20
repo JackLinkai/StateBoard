@@ -82,12 +82,12 @@ PostgreSQL（持久化 + 版本 + 审计）  Redis（热状态 + TTL + 锁）
 
 ### 各层职责
 
-| 层 | 职责 | 不做什么 |
-|---|---|---|
-| L1 Ingestor | 事件接收、格式归一化、幂等去重 | 不判断语义 |
-| L2 Compiler | 分类、冲突消解、TTL、预算裁剪、生成状态卡 | 不持久化、不直接调模型 |
-| L3 Governance | 快照、恢复、交接、回放、权限视图 | 不改变编译语义 |
-| L4 Interfaces | 面向模型/程序/人/MCP 的视图 | 不承载业务逻辑 |
+| 层             | 职责                     | 不做什么        |
+|---------------|------------------------|-------------|
+| L1 Ingestor   | 事件接收、格式归一化、幂等去重        | 不判断语义       |
+| L2 Compiler   | 分类、冲突消解、TTL、预算裁剪、生成状态卡 | 不持久化、不直接调模型 |
+| L3 Governance | 快照、恢复、交接、回放、权限视图       | 不改变编译语义     |
+| L4 Interfaces | 面向模型/程序/人/MCP 的视图      | 不承载业务逻辑     |
 
 ---
 
@@ -329,11 +329,11 @@ CREATE TABLE event_log (
 
 ### Redis（设计中）
 
-| Key | 用途 | TTL |
-|---|---|---|
-| `asc:task:{taskId}:hot` | 当前有效状态项缓存 | 与任务活跃期一致 |
-| `asc:task:{taskId}:version` | 当前版本号 | 无 |
-| `asc:lock:{taskId}` | 编译与写入锁 | 短 TTL，防死锁 |
+| Key                         | 用途        | TTL       |
+|-----------------------------|-----------|-----------|
+| `asc:task:{taskId}:hot`     | 当前有效状态项缓存 | 与任务活跃期一致  |
+| `asc:task:{taskId}:version` | 当前版本号     | 无         |
+| `asc:lock:{taskId}`         | 编译与写入锁    | 短 TTL，防死锁 |
 
 一致性策略：**Postgres 为准，Redis 为缓存**。编译时先写 Postgres，再更新 Redis；恢复时以 Postgres 为准。
 
@@ -343,15 +343,15 @@ CREATE TABLE event_log (
 
 ### REST（已设计，路径以 README 为准）
 
-| 方法 | 路径 | 说明 |
-|---|---|---|
-| POST | `/v1/tasks` | 创建任务，支持 `restoreFrom` |
-| POST | `/v1/tasks/{id}/constraints` | 写入约束 |
-| POST | `/v1/tasks/{id}/events` | 写入事件（工具返回、事实、待办） |
-| GET | `/v1/tasks/{id}/state-card` | 获取状态卡，支持 `budget` |
-| POST | `/v1/tasks/{id}/snapshot` | 生成快照 |
-| GET | `/v1/tasks/{id}/replay` | 按版本回放 |
-| GET | `/actuator/health` | 健康检查 |
+| 方法   | 路径                           | 说明                    |
+|------|------------------------------|-----------------------|
+| POST | `/v1/tasks`                  | 创建任务，支持 `restoreFrom` |
+| POST | `/v1/tasks/{id}/constraints` | 写入约束                  |
+| POST | `/v1/tasks/{id}/events`      | 写入事件（工具返回、事实、待办）      |
+| GET  | `/v1/tasks/{id}/state-card`  | 获取状态卡，支持 `budget`     |
+| POST | `/v1/tasks/{id}/snapshot`    | 生成快照                  |
+| GET  | `/v1/tasks/{id}/replay`      | 按版本回放                 |
+| GET  | `/actuator/health`           | 健康检查                  |
 
 约定：
 
@@ -375,14 +375,14 @@ MCP 只做协议适配，复用同一套应用服务。
 
 ## 扩展点
 
-| 接口 | 职责 | 默认实现 | 状态 |
-|---|---|---|---|
-| `ConflictResolver` | 同 key 事实 / 约束冲突消解 | `LatestWinsResolver` | 设计中 |
-| `BudgetTrimmer` | 按 token 预算裁剪状态卡 | `PriorityBudgetTrimmer` | 设计中 |
-| `ConstraintClassifier` | 判断文本是否为硬约束 | `RuleBasedClassifier` | 设计中 |
-| `TokenEstimator` | token 估算 | `CharBasedEstimator` | 设计中 |
-| `StateViewRenderer` | 面向不同调用方的视图渲染 | `DefaultViewRenderer` | 规划中 |
-| `SnapshotPolicy` | 何时生成快照 | `OnTaskClosePolicy` | 规划中 |
+| 接口                     | 职责                | 默认实现                    | 状态  |
+|------------------------|-------------------|-------------------------|-----|
+| `ConflictResolver`     | 同 key 事实 / 约束冲突消解 | `LatestWinsResolver`    | 设计中 |
+| `BudgetTrimmer`        | 按 token 预算裁剪状态卡   | `PriorityBudgetTrimmer` | 设计中 |
+| `ConstraintClassifier` | 判断文本是否为硬约束        | `RuleBasedClassifier`   | 设计中 |
+| `TokenEstimator`       | token 估算          | `CharBasedEstimator`    | 设计中 |
+| `StateViewRenderer`    | 面向不同调用方的视图渲染      | `DefaultViewRenderer`   | 规划中 |
+| `SnapshotPolicy`       | 何时生成快照            | `OnTaskClosePolicy`     | 规划中 |
 
 扩展方式：实现接口 + 注册为 Spring Bean，通过配置选择默认策略。
 
@@ -393,15 +393,15 @@ MCP 只做协议适配，复用同一套应用服务。
 ### 已知失败模式
 
 1. **token 估算不准**：字符估算对代码和 JSON 偏差较大，可能导致状态卡超预算。
-   - 缓解：预算缓冲、可替换 `TokenEstimator`、超预算时按优先级二次裁剪。
+    - 缓解：预算缓冲、可替换 `TokenEstimator`、超预算时按优先级二次裁剪。
 2. **冲突消解语义错误**：`LatestWins` 在“新值不可信”场景下会覆盖正确旧值。
-   - 缓解：硬约束冲突不自动消解；支持 `ManualResolver`；所有覆盖写 `invalidated` 可追溯。
+    - 缓解：硬约束冲突不自动消解；支持 `ManualResolver`；所有覆盖写 `invalidated` 可追溯。
 3. **多 Agent 并发写**：同一任务多写者可能产生版本竞争。
-   - 缓解：Redis 分布式锁 + 乐观版本号；冲突时返回 409。
+    - 缓解：Redis 分布式锁 + 乐观版本号；冲突时返回 409。
 4. **状态卡与原始日志不一致**：裁剪或摘要后，模型看到的状态与日志不完全对应。
-   - 缓解：状态卡带 `version`，回放基于 `event_log`，审计时以版本为准。
+    - 缓解：状态卡带 `version`，回放基于 `event_log`，审计时以版本为准。
 5. **恢复后 TTL 失真**：快照中的事实恢复时 TTL 需要重算，可能过早或过晚过期。
-   - 缓解：恢复策略可配置（继承剩余 TTL / 重置 TTL / 标记待确认）。
+    - 缓解：恢复策略可配置（继承剩余 TTL / 重置 TTL / 标记待确认）。
 
 ### 设计权衡
 
