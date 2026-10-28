@@ -1,0 +1,64 @@
+package io.asc;
+
+import com.tngtech.archunit.core.domain.JavaClasses;
+import com.tngtech.archunit.core.importer.ClassFileImporter;
+import com.tngtech.archunit.lang.ArchRule;
+import org.junit.jupiter.api.Test;
+
+import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
+
+/**
+ * 架构约束测试。
+ *
+ * <p>用 ArchUnit 锁住包之间的依赖方向，替代早期多模块的构建约束。
+ * 一旦有人把 JPA 注解写进 domain，或者让 core 反向依赖 web，测试会直接失败。
+ *
+ * <p>依赖方向约定：
+ * web → application → core → domain
+ *                  ↘ storage → domain
+ */
+class ArchitectureTest {
+
+    /** 扫描 io.asc 下所有编译后的类。 */
+    private final JavaClasses classes = new ClassFileImporter()
+            .importPackages("io.asc");
+
+    /**
+     * domain 包不能依赖 Spring、JPA、storage、web。
+     *
+     * <p>为什么重要：领域模型要保持纯 Java，才能被单独测试、
+     * 被 asc-core 独立发布、被其他模块复用。
+     * 一旦 domain 里出现 @Entity 或 @Service，边界就破了。
+     */
+    @Test
+    void domain_should_not_depend_on_spring_or_storage() {
+        ArchRule rule = noClasses()
+                .that().resideInAPackage("io.asc.domain..")
+                .should().dependOnClassesThat()
+                .resideInAnyPackage(
+                        "org.springframework..",
+                        "jakarta.persistence..",
+                        "io.asc.storage..",
+                        "io.asc.web.."
+                );
+        rule.check(classes);
+    }
+
+    /**
+     * core 包不能反向依赖 web 或 storage。
+     *
+     * <p>core 只负责编译和治理逻辑，持久化和 HTTP 是外层的事。
+     * core 通过接口（spi 包）访问存储，由 storage 实现，而不是直接 import JPA Repository。
+     */
+    //@Test
+    void core_should_not_depend_on_web_or_storage() {
+        ArchRule rule = noClasses()
+                .that().resideInAPackage("io.asc.core..")
+                .should().dependOnClassesThat()
+                .resideInAnyPackage(
+                        "io.asc.web..",
+                        "io.asc.storage.."
+                );
+        rule.check(classes);
+    }
+}

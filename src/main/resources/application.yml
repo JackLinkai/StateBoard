@@ -1,0 +1,17 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/asc
+    username: asc
+    password: asc
+  jpa:
+    hibernate:
+      ddl-auto: validate   # 先 validate，表用 SQL 建
+    open-in-view: false
+  data:
+    redis:
+      host: localhost
+      port: 6379
+
+asc:
+  compiler:
+    default-budget-tokens: 1200
