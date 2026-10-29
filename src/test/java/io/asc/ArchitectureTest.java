@@ -61,4 +61,24 @@ class ArchitectureTest {
                 );
         rule.check(classes);
     }
+
+    /**
+     * 只有 storage 层允许依赖 JPA。
+     *
+     * <p>domain 必须是纯 Java（上一条规则已锁），
+     * 以后 web / application / core 也不许绕过 storage 直接摸 @Entity 或 Repository，
+     * 否则 domain ↔ entity 的隔离就形同虚设。谁在 storage 之外引 jakarta.persistence，这里直接红。
+     */
+    @Test
+    void only_storage_may_depend_on_jpa() {
+        ArchRule rule = noClasses()
+                .that().resideOutsideOfPackage("io.asc.storage..")
+                .should().dependOnClassesThat()
+                .resideInAnyPackage(
+                        "jakarta.persistence..",
+                        "org.hibernate..",
+                        "org.springframework.data.jpa.."
+                );
+        rule.check(classes);
+    }
 }
