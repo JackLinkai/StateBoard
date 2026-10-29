@@ -1,6 +1,7 @@
 package io.asc.web;
 
 import io.asc.application.TaskApplicationService;
+import io.asc.application.TaskLifecycleService;
 import io.asc.domain.Budget;
 import io.asc.domain.Constraint;
 import io.asc.domain.StateCard;
@@ -24,16 +25,35 @@ import org.springframework.web.bind.annotation.*;
 public class TaskController {
 
     private final TaskApplicationService service;
+    private final TaskLifecycleService lifecycleService;
 
-    public TaskController(TaskApplicationService service) {
+    public TaskController(TaskApplicationService service,
+                          TaskLifecycleService lifecycleService) {
         this.service = service;
+        this.lifecycleService = lifecycleService;
     }
 
-    /** 创建任务。 */
+    /** 创建任务；带 restoreFrom 时按源任务的当前有效状态恢复出新任务。 */
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public Task createTask(@RequestBody @Valid CreateTaskRequest req) {
+        if (req.restoreFrom() != null && !req.restoreFrom().isBlank()) {
+            return lifecycleService.restore(req.taskId(), req.restoreFrom(), req.description());
+        }
         return service.createTask(req.taskId(), req.description());
+    }
+
+    /** 结束任务并生成快照：编译全量卡落库，任务转为 SNAPSHOTTED。 */
+    @PostMapping("/{taskId}/snapshot")
+    public StateCard snapshot(@PathVariable String taskId) {
+        return lifecycleService.snapshot(taskId);
+    }
+
+    /** 版本回放：取历史上某一刻持久化的状态卡；version 缺省取最新持久化的一版。 */
+    @GetMapping("/{taskId}/replay")
+    public StateCard replay(@PathVariable String taskId,
+                            @RequestParam(required = false) Long version) {
+        return lifecycleService.replay(taskId, version);
     }
 
     /** 写约束。level 可空，默认 HARD。 */

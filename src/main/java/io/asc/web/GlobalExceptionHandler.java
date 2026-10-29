@@ -1,5 +1,7 @@
 package io.asc.web;
 
+import io.asc.application.CardNotFoundException;
+import io.asc.application.TaskAlreadyExistsException;
 import io.asc.application.TaskNotFoundException;
 import io.asc.web.error.ErrorResponse;
 import org.slf4j.Logger;
@@ -55,6 +57,18 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(TaskNotFoundException.class)
     public ResponseEntity<ErrorResponse> handleNotFound(TaskNotFoundException ex) {
         return build(HttpStatus.NOT_FOUND, "TASK_NOT_FOUND", ex.getMessage());
+    }
+
+    /** 任务 ID 已被占用（创建/恢复冲突）。 */
+    @ExceptionHandler(TaskAlreadyExistsException.class)
+    public ResponseEntity<ErrorResponse> handleTaskAlreadyExists(TaskAlreadyExistsException ex) {
+        return build(HttpStatus.CONFLICT, "TASK_ALREADY_EXISTS", ex.getMessage());
+    }
+
+    /** 请求的历史状态卡不存在（版本未持久化或任务没有卡）。 */
+    @ExceptionHandler(CardNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleCardNotFound(CardNotFoundException ex) {
+        return build(HttpStatus.NOT_FOUND, "CARD_NOT_FOUND", ex.getMessage());
     }
 
     /** 领域模型抛出的非法参数，比如空白 text。 */

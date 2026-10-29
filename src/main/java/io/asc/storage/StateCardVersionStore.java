@@ -47,4 +47,11 @@ public class StateCardVersionStore {
         return repository.findById(new StateCardVersionEntity.PK(taskId, version))
                 .map(entity -> objectMapper.readValue(entity.getCard(), StateCard.class));
     }
+
+    /** 取某任务最新一版已持久化的状态卡。 */
+    @Transactional(readOnly = true)
+    public Optional<StateCard> findLatest(String taskId) {
+        return repository.findTopByTaskIdOrderByVersionDesc(taskId)
+                .map(entity -> objectMapper.readValue(entity.getCard(), StateCard.class));
+    }
 }
