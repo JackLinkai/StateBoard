@@ -1,5 +1,6 @@
 package io.asc.application;
 
+import io.asc.domain.Budget;
 import io.asc.domain.Constraint;
 import io.asc.domain.StateCard;
 import io.asc.domain.StateItem;
@@ -63,9 +64,10 @@ public interface TaskApplicationService {
     void recordEvent(String taskId, StateItem item);
 
     /**
-     * 获取某任务的当前状态卡（分组视图，阶段 1 不做预算裁剪）。
+     * 获取某任务的当前状态卡（按预算裁剪；budget 为 null 时用默认预算）。
+     * 全量卡会持久化到 state_card_version，作为回放与审计的正式版本。
      *
      * @throws TaskNotFoundException 任务不存在时
      */
-    StateCard getStateCard(String taskId);
+    StateCard getStateCard(String taskId, Budget budget);
 }

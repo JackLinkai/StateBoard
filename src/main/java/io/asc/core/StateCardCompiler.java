@@ -9,14 +9,16 @@ import io.asc.domain.Todo;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.Deque;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
 /**
- * L2 状态编译器：把任务的全量状态项编译成一张 StateCard。
+ * L2 状态编译器：把任务的全量状态项编译成一张 StateCard，并支持按预算裁剪。
  *
  * <p>这是 README 架构图里标 ★ 的核心层。编排逻辑（查任务、取状态项）在
  * application 层，这里只做纯规则转换，输入输出都是 domain 类型：
@@ -30,7 +32,9 @@ import java.util.Map;
  *       supersededBy 指向最新一条——对应"销量 100 被 120 覆盖"；</li>
  *   <li><b>约束分格</b>：HARD / SOFT 各进一格；</li>
  *   <li><b>待办过滤</b>：只保留 OPEN，DONE / CANCELLED 不进卡；</li>
- *   <li><b>存量 InvalidatedItem 透传</b>：之前持久化过的失效记录原样进卡。</li>
+ *   <li><b>存量 InvalidatedItem 透传</b>：之前持久化过的失效记录原样进卡；</li>
+ *   <li><b>预算裁剪（trim）</b>：按 token 预算从低价值格开始丢
+ *       （失效记录 → 软约束 → 待办 → 事实），硬约束永不裁剪。</li>
  * </ol>
  *
  * <p>消费顺序即优先级：先 TTL 过滤再冲突消解——已过期的事实不参与"谁覆盖谁"，
@@ -45,7 +49,13 @@ public class StateCardCompiler {
     /** 衍生失效记录的来源标识：由编译器生成，而非 user / tool 写入。 */
     static final String COMPILER_SOURCE = "compiler";
 
+    /** 每条失效记录的固定 token 估值：reason + supersededBy 等元数据开销。 */
+    private static final int INVALIDATED_TOKENS = 20;
+
     /**
+     * 编译全量状态卡（不裁剪）。裁剪由 {@link #trim} 单独承担：
+     * 持久化和回放用全量卡，注入 Agent 前才按预算裁。
+     *
      * @param taskId 任务 ID
      * @param items  该任务的全量状态项（不要求有序）
      * @param now    编译时刻，用于 TTL 判断和失效记录的时间戳
@@ -98,9 +108,58 @@ public class StateCardCompiler {
     }
 
     /**
-     * 同 key 冲突消解：每组按 createdAt 升序排（并列比 version），最后一条获胜，
-     * 其余转 InvalidatedItem(SUPERSEDED)，supersededBy 指向获胜者。
+     * 按预算裁剪状态卡，返回裁剪后的新卡（入参不变）。
+     *
+     * <p>裁剪规则：
+     * <ul>
+     *   <li>硬约束永不裁剪——ASC 的意义就是保住它们；</li>
+     *   <li>丢弃优先级（从先到后）：失效记录 → 软约束 → 待办 → 事实，
+     *       越靠后的信息越直接支撑"下一步决策"；</li>
+     *   <li>同格内先丢最老的（createdAt 升序排队，从队首丢）；</li>
+     *   <li>整条丢弃，不做截断——半条事实比没有更危险。</li>
+     * </ul>
+     * 预算内直接原样返回。
      */
+    public StateCard trim(StateCard card, int budgetTokens) {
+        if (card.estimatedTokens() <= budgetTokens) {
+            return card;
+        }
+
+        Deque<InvalidatedItem> invalidated = new ArrayDeque<>(card.invalidated());
+        Deque<Constraint> soft = new ArrayDeque<>(card.softConstraints());
+        Deque<Todo> todos = new ArrayDeque<>(card.openTodos());
+        Deque<Fact> facts = new ArrayDeque<>(card.verifiedFacts());
+
+        int used = card.estimatedTokens();
+        while (used > budgetTokens) {
+            if (!invalidated.isEmpty()) {
+                used -= tokensOf(invalidated.pollFirst());
+            } else if (!soft.isEmpty()) {
+                used -= tokensOf(soft.pollFirst());
+            } else if (!todos.isEmpty()) {
+                used -= tokensOf(todos.pollFirst());
+            } else if (!facts.isEmpty()) {
+                used -= tokensOf(facts.pollFirst());
+            } else {
+                break;  // 只剩硬约束，宁超不裁
+            }
+        }
+
+        List<Constraint> keptSoft = List.copyOf(soft);
+        List<Todo> keptTodos = List.copyOf(todos);
+        List<Fact> keptFacts = List.copyOf(facts);
+        List<InvalidatedItem> keptInvalidated = List.copyOf(invalidated);
+
+        int estimated = estimateTokens(card.hardConstraints(), keptSoft, keptFacts,
+                keptTodos, keptInvalidated);
+        return new StateCard(card.taskId(), card.version(), card.hardConstraints(),
+                keptSoft, keptFacts, keptTodos, keptInvalidated,
+                estimated, card.compiledAt());
+    }
+
+    /* ---------- 内部步骤 ---------- */
+
+    /** 同 key 冲突消解：每组按 createdAt 升序排（并列比 version），最后一条获胜，其余转 SUPERSEDED。 */
     private List<Fact> resolveConflicts(String taskId, List<Fact> liveFacts,
                                         List<InvalidatedItem> invalidated, Instant now) {
         Map<String, List<Fact>> byKey = new LinkedHashMap<>();
@@ -123,15 +182,30 @@ public class StateCardCompiler {
         return winners;
     }
 
-    /** 粗估 token：4 字符 ≈ 1 token；每条失效记录摊 20；空卡至少 1。 */
+    /** 卡的估算 token：保留项逐条求和，空卡至少 1。与 {@link #tokensOf} 同一套规则，trim 的算术才自洽。 */
     private int estimateTokens(List<Constraint> hard, List<Constraint> soft,
                                List<Fact> facts, List<Todo> todos,
                                List<InvalidatedItem> invalidated) {
-        int chars = 0;
-        for (Constraint c : hard) chars += c.text().length();
-        for (Constraint c : soft) chars += c.text().length();
-        for (Fact f : facts) chars += f.key().length() + f.value().length();
-        for (Todo t : todos) chars += t.text().length();
-        return Math.max(1, chars / 4 + invalidated.size() * 20);
+        int sum = 0;
+        for (Constraint c : hard) sum += tokensOf(c);
+        for (Constraint c : soft) sum += tokensOf(c);
+        for (Fact f : facts) sum += tokensOf(f);
+        for (Todo t : todos) sum += tokensOf(t);
+        for (InvalidatedItem i : invalidated) sum += tokensOf(i);
+        return Math.max(1, sum);
+    }
+
+    /** 单条状态项的 token 估值：约 4 字符 1 token（向上取整），失效记录固定 20。 */
+    private int tokensOf(StateItem item) {
+        return switch (item) {
+            case Constraint c -> charsToTokens(c.text().length());
+            case Fact f -> charsToTokens(f.key().length() + f.value().length());
+            case Todo t -> charsToTokens(t.text().length());
+            case InvalidatedItem i -> INVALIDATED_TOKENS;
+        };
+    }
+
+    private int charsToTokens(int chars) {
+        return Math.max(1, (chars + 3) / 4);
     }
 }

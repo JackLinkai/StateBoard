@@ -2,6 +2,7 @@ package io.asc.web;
 
 import io.asc.application.TaskApplicationService;
 import io.asc.application.TaskNotFoundException;
+import io.asc.domain.Budget;
 import io.asc.domain.Constraint;
 import io.asc.domain.StateCard;
 import io.asc.domain.Task;
@@ -138,7 +139,7 @@ class TaskControllerTest {
     @Test
     @DisplayName("GET /{id}/state-card：200，返回状态卡 JSON")
     void get_state_card_returns_200() throws Exception {
-        when(service.getStateCard("task-1")).thenReturn(new StateCard(
+        when(service.getStateCard(eq("task-1"), isNull())).thenReturn(new StateCard(
                 "task-1", 7, List.of(), List.of(), List.of(), List.of(), List.of(), 10, NOW));
 
         mockMvc.perform(get("/v1/tasks/task-1/state-card"))
@@ -147,5 +148,24 @@ class TaskControllerTest {
                 .andExpect(jsonPath("$.version").value(7))
                 .andExpect(jsonPath("$.hardConstraints").isArray())
                 .andExpect(jsonPath("$.estimatedTokens").value(10));
+    }
+
+    @Test
+    @DisplayName("GET /{id}/state-card?budget=small：档位解析为 Budget.SMALL 透传")
+    void get_state_card_with_budget() throws Exception {
+        when(service.getStateCard(eq("task-1"), eq(Budget.SMALL))).thenReturn(new StateCard(
+                "task-1", 7, List.of(), List.of(), List.of(), List.of(), List.of(), 10, NOW));
+
+        mockMvc.perform(get("/v1/tasks/task-1/state-card").param("budget", "small"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.taskId").value("task-1"));
+    }
+
+    @Test
+    @DisplayName("GET /{id}/state-card?budget=huge：非法档位 → 400 INVALID_ARGUMENT")
+    void get_state_card_with_unknown_budget_returns_400() throws Exception {
+        mockMvc.perform(get("/v1/tasks/task-1/state-card").param("budget", "huge"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_ARGUMENT"));
     }
 }

@@ -1,6 +1,7 @@
 package io.asc.web;
 
 import io.asc.application.TaskApplicationService;
+import io.asc.domain.Budget;
 import io.asc.domain.Constraint;
 import io.asc.domain.StateCard;
 import io.asc.domain.Task;
@@ -64,11 +65,14 @@ public class TaskController {
 
     /**
      * 拿状态卡。
-     * 阶段 1 先忽略 budget 参数，返回全部状态，不做裁剪。
+     *
+     * @param budget 预算档位（small/medium/large，大小写不敏感），
+     *               缺省用配置的 asc.compiler.default-budget-tokens
      */
     @GetMapping("/{taskId}/state-card")
-    public StateCard getStateCard(@PathVariable String taskId) {
-        return service.getStateCard(taskId);
+    public StateCard getStateCard(@PathVariable String taskId,
+                                  @RequestParam(required = false) String budget) {
+        return service.getStateCard(taskId, Budget.parse(budget));
     }
 
     private Constraint.ConstraintLevel parseLevel(String level) {

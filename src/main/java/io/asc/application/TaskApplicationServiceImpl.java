@@ -1,5 +1,6 @@
 package io.asc.application;
 
+import io.asc.domain.Budget;
 import io.asc.domain.Constraint;
 import io.asc.domain.Fact;
 import io.asc.domain.InvalidatedItem;
@@ -78,8 +79,8 @@ public class TaskApplicationServiceImpl implements TaskApplicationService {
 
     @Override
     @Transactional(readOnly = true)
-    public StateCard getStateCard(String taskId) {
-        return stateCardQueryService.getStateCard(taskId);
+    public StateCard getStateCard(String taskId, Budget budget) {
+        return stateCardQueryService.getStateCard(taskId, budget);
     }
 
     @Override

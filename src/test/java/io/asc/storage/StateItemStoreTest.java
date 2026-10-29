@@ -1,6 +1,9 @@
 package io.asc.storage;
 
+import io.asc.domain.Constraint;
 import io.asc.domain.Fact;
+import io.asc.domain.InvalidatedItem;
+import io.asc.domain.StateCard;
 import io.asc.domain.StateItem;
 import io.asc.domain.Task;
 import io.asc.domain.Todo;
@@ -41,6 +44,9 @@ class StateItemStoreTest {
 
     @Autowired
     private TaskStore taskStore;
+
+    @Autowired
+    private StateCardVersionStore stateCardVersionStore;
 
     private static final Instant NOW = Instant.parse("2026-10-29T10:00:00Z");
 
@@ -86,5 +92,27 @@ class StateItemStoreTest {
 
         List<StateItem> items = stateItemStore.findByTaskId(taskId);
         assertThat(items).containsExactly(first, second, third);
+    }
+
+    @Test
+    void save_card_version_then_read_back_equals() {
+        String taskId = "tc-card-001";
+        taskStore.save(new Task(taskId, "集成测试：状态卡版本", Task.TaskStatus.ACTIVE, NOW, NOW, 2));
+
+        StateCard card = new StateCard(taskId, 2,
+                List.of(new Constraint("c-001", taskId, "只允许查询最近30天数据",
+                        Constraint.ConstraintLevel.HARD, NOW, "user", 1)),
+                List.of(),
+                List.of(new Fact("f-201", taskId, "shanghai_sales", "120",
+                        NOW, null, "tool", 2)),
+                List.of(new Todo("t-201", taskId, "杭州数据待查",
+                        Todo.TodoStatus.OPEN, NOW, "model", 2)),
+                List.of(new InvalidatedItem("i-201", taskId, "SUPERSEDED", "f-202",
+                        NOW, "compiler", 1)),
+                42, NOW);
+
+        stateCardVersionStore.save(card);
+
+        assertThat(stateCardVersionStore.find(taskId, 2)).contains(card);
     }
 }

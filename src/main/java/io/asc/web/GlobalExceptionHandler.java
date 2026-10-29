@@ -10,6 +10,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import java.util.UUID;
 
@@ -41,6 +42,13 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(HandlerMethodValidationException.class)
     public ResponseEntity<ErrorResponse> handleParamValidation(HandlerMethodValidationException ex) {
         return build(HttpStatus.BAD_REQUEST, "VALIDATION_FAILED", "request parameter validation failed");
+    }
+
+    /** @RequestParam 类型转换失败，比如 budget 传了不存在的档位名。 */
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ErrorResponse> handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
+        return build(HttpStatus.BAD_REQUEST, "INVALID_ARGUMENT",
+                "invalid value for parameter '" + ex.getName() + "': " + ex.getValue());
     }
 
     /** 任务不存在。 */

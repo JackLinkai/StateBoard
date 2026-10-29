@@ -1,15 +1,17 @@
 package io.asc.application;
 
 import io.asc.core.StateCardCompiler;
+import io.asc.domain.Budget;
 import io.asc.domain.StateCard;
 import io.asc.domain.StateItem;
 import io.asc.domain.Task;
+import io.asc.storage.StateCardVersionStore;
 import io.asc.storage.StateItemStore;
 import io.asc.storage.TaskStore;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -20,13 +22,16 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 /**
- * 状态卡查询的纯单元测试：这里是薄壳（校验任务 → 取数 → 委托编译器），
- * 规则语义已由 core 层的 StateCardCompilerTest 锁定，本测试只锁编排行为。
+ * 状态卡查询的纯单元测试：这里是薄壳（校验任务 → 取数 → 编译 → 持久化 → 裁剪），
+ * 规则语义已由 core 层的 StateCardCompilerTest 锁定，本测试只锁编排行为：
+ * 全量卡持久化、预算档位与默认预算的解析。
  */
 @ExtendWith(MockitoExtension.class)
 class StateCardQueryServiceTest {
@@ -40,35 +45,65 @@ class StateCardQueryServiceTest {
     @Mock
     private StateCardCompiler compiler;
 
-    @InjectMocks
+    @Mock
+    private StateCardVersionStore stateCardVersionStore;
+
     private StateCardQueryService service;
 
     private static final Instant NOW = Instant.parse("2026-10-29T10:00:00Z");
 
-    @Test
-    @DisplayName("任务不存在抛 TaskNotFoundException，且不取状态项")
-    void missing_task_throws() {
-        when(taskStore.findById("no-such")).thenReturn(Optional.empty());
-
-        assertThatThrownBy(() -> service.getStateCard("no-such"))
-                .isInstanceOf(TaskNotFoundException.class);
-
-        verifyNoInteractions(stateItemStore, compiler);
+    @BeforeEach
+    void setUp() {
+        // 手动构造以便注入默认预算（@Value 不适用于 Mockito）
+        service = new StateCardQueryService(taskStore, stateItemStore,
+                compiler, stateCardVersionStore, 1200);
     }
 
     @Test
-    @DisplayName("取全量状态项后委托编译器，返回编译结果")
-    void delegates_to_compiler() {
+    @DisplayName("任务不存在抛 TaskNotFoundException，且不取数、不编译、不落库")
+    void missing_task_throws() {
+        when(taskStore.findById("no-such")).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.getStateCard("no-such", null))
+                .isInstanceOf(TaskNotFoundException.class);
+
+        verifyNoInteractions(stateItemStore, compiler, stateCardVersionStore);
+    }
+
+    @Test
+    @DisplayName("编译全量卡并持久化；带 budget 时返回裁剪视图")
+    void compiles_persists_full_card_and_trims_by_budget() {
         when(taskStore.findById("task-1")).thenReturn(Optional.of(
                 new Task("task-1", "d", Task.TaskStatus.ACTIVE, NOW, NOW, 0)));
         List<StateItem> items = List.of();
         when(stateItemStore.findByTaskId("task-1")).thenReturn(items);
-        StateCard card = new StateCard("task-1", 3, List.of(), List.of(), List.of(),
-                List.of(), List.of(), 1, NOW);
-        when(compiler.compile(eq("task-1"), eq(items), any())).thenReturn(card);
+        StateCard full = new StateCard("task-1", 3, List.of(), List.of(), List.of(),
+                List.of(), List.of(), 800, NOW);
+        when(compiler.compile(eq("task-1"), eq(items), any())).thenReturn(full);
+        StateCard trimmed = new StateCard("task-1", 3, List.of(), List.of(), List.of(),
+                List.of(), List.of(), 300, NOW);
+        when(compiler.trim(full, Budget.SMALL.tokens())).thenReturn(trimmed);
 
-        StateCard result = service.getStateCard("task-1");
+        StateCard result = service.getStateCard("task-1", Budget.SMALL);
 
-        assertThat(result).isSameAs(card);
+        assertThat(result).isSameAs(trimmed);
+        verify(stateCardVersionStore).save(full);   // 持久化的是全量卡
+    }
+
+    @Test
+    @DisplayName("budget 为 null 时使用配置的默认预算（1200）")
+    void uses_default_budget_when_param_absent() {
+        when(taskStore.findById("task-1")).thenReturn(Optional.of(
+                new Task("task-1", "d", Task.TaskStatus.ACTIVE, NOW, NOW, 0)));
+        when(stateItemStore.findByTaskId("task-1")).thenReturn(List.of());
+        StateCard full = new StateCard("task-1", 1, List.of(), List.of(), List.of(),
+                List.of(), List.of(), 100, NOW);
+        when(compiler.compile(eq("task-1"), any(), any())).thenReturn(full);
+        when(compiler.trim(eq(full), anyInt())).thenReturn(full);
+
+        service.getStateCard("task-1", null);
+
+        verify(compiler).trim(full, 1200);
+        verify(stateCardVersionStore).save(full);
     }
 }

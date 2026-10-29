@@ -179,4 +179,118 @@ class StateCardCompilerTest {
         assertThat(empty.invalidated()).isEmpty();
         assertThat(empty.compiledAt()).isEqualTo(NOW);
     }
+
+    /* ---------- trim：预算裁剪 ---------- */
+
+    /**
+     * 组一张"富"卡：1 硬约束(4 tok) + 1 事实(2 tok) + 2 待办(各3) + 2 软约束(各3)
+     * + 3 存量失效记录(各20)，全量估算 4+2+6+6+60 = 78。
+     */
+    private StateCard richCard() {
+        List<StateItem> items = List.of(
+                new Constraint("c-hard", TASK, "硬约束只允许查询最近三十天数据",
+                        Constraint.ConstraintLevel.HARD, NOW.minusSeconds(90), "user", 1),
+                factAt("f-win", "sales", "120", NOW.minusSeconds(30)),
+                new Todo("t-old", TASK, "待办一待办一待办一待办",
+                        Todo.TodoStatus.OPEN, NOW.minusSeconds(80), "model", 2),
+                new Todo("t-new", TASK, "待办二待办二待办二待办",
+                        Todo.TodoStatus.OPEN, NOW.minusSeconds(40), "model", 3),
+                new Constraint("c-soft1", TASK, "软约束一软约束一软约束一",
+                        Constraint.ConstraintLevel.SOFT, NOW.minusSeconds(70), "user", 4),
+                new Constraint("c-soft2", TASK, "软约束二软约束二软约束二",
+                        Constraint.ConstraintLevel.SOFT, NOW.minusSeconds(50), "user", 5),
+                new InvalidatedItem("i-1", TASK, "REJECTED", null, NOW, "human", 2),
+                new InvalidatedItem("i-2", TASK, "REJECTED", null, NOW, "human", 3),
+                new InvalidatedItem("i-3", TASK, "REJECTED", null, NOW, "human", 4));
+        return compiler.compile(TASK, items, NOW);
+    }
+
+    @Test
+    @DisplayName("trim：预算内直接原样返回同一实例")
+    void trim_within_budget_returns_same_card() {
+        StateCard card = richCard();
+
+        assertThat(compiler.trim(card, 78)).isSameAs(card);
+        assertThat(compiler.trim(card, 1000)).isSameAs(card);
+    }
+
+    @Test
+    @DisplayName("trim：先丢失效记录（20 tok/条），其他格不动")
+    void trim_drops_invalidated_first() {
+        StateCard card = richCard();  // 78 tok
+
+        StateCard trimmed = compiler.trim(card, 70);  // 78-20=58 ≤ 70
+
+        assertThat(trimmed.invalidated()).hasSize(2);
+        assertThat(trimmed.softConstraints()).hasSize(2);
+        assertThat(trimmed.openTodos()).hasSize(2);
+        assertThat(trimmed.verifiedFacts()).hasSize(1);
+        assertThat(trimmed.hardConstraints()).hasSize(1);
+    }
+
+    @Test
+    @DisplayName("trim：失效记录丢完后丢软约束，再丢待办，最后丢事实")
+    void trim_drop_priority_order() {
+        StateCard card = richCard();
+
+        // 78→58→38→18：三条失效全丢
+        StateCard noInvalidated = compiler.trim(card, 30);
+        assertThat(noInvalidated.invalidated()).isEmpty();
+        assertThat(noInvalidated.softConstraints()).hasSize(2);
+        assertThat(noInvalidated.openTodos()).hasSize(2);
+        assertThat(noInvalidated.verifiedFacts()).hasSize(1);
+
+        // 18→15→12：软约束逐条丢
+        StateCard noSoft = compiler.trim(card, 12);
+        assertThat(noSoft.invalidated()).isEmpty();
+        assertThat(noSoft.softConstraints()).isEmpty();
+        assertThat(noSoft.openTodos()).hasSize(2);
+        assertThat(noSoft.verifiedFacts()).hasSize(1);
+
+        // 12→9→6：待办逐条丢
+        StateCard noTodos = compiler.trim(card, 6);
+        assertThat(noTodos.openTodos()).isEmpty();
+        assertThat(noTodos.verifiedFacts()).hasSize(1);
+
+        // 6→3：事实也可丢，只剩硬约束（宁超不裁）
+        StateCard hardOnly = compiler.trim(card, 1);
+        assertThat(hardOnly.verifiedFacts()).isEmpty();
+        assertThat(hardOnly.hardConstraints()).hasSize(1);
+        assertThat(hardOnly.softConstraints()).isEmpty();
+        assertThat(hardOnly.openTodos()).isEmpty();
+        assertThat(hardOnly.invalidated()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("trim：同格内先丢最老的")
+    void trim_drops_oldest_first() {
+        // 硬 4 tok + 两条事实各 1 tok（key/value 都是 2 字符），全量 6
+        List<StateItem> items = List.of(
+                new Constraint("c-hard", TASK, "硬约束只允许查询最近三十天数据",
+                        Constraint.ConstraintLevel.HARD, NOW.minusSeconds(90), "user", 1),
+                factAt("f-a1", "a1", "v1", NOW.minusSeconds(60)),
+                factAt("f-b2", "b2", "v2", NOW.minusSeconds(30)));
+        StateCard card = compiler.compile(TASK, items, NOW);
+
+        // 预算 5：丢最老的 f-a1，留 f-b2
+        StateCard trimmed = compiler.trim(card, 5);
+
+        assertThat(trimmed.verifiedFacts())
+                .extracting(Fact::id)
+                .containsExactly("f-b2");
+    }
+
+    @Test
+    @DisplayName("trim：硬约束永不裁剪，即使它自己就超预算")
+    void trim_never_drops_hard_constraints() {
+        // 硬约束文本很长（40 字符 ≈ 10 tok），远超预算
+        List<StateItem> items = List.of(new Constraint("c-big", TASK, "硬".repeat(40),
+                Constraint.ConstraintLevel.HARD, NOW, "user", 1));
+        StateCard card = compiler.compile(TASK, items, NOW);
+
+        StateCard trimmed = compiler.trim(card, 2);
+
+        assertThat(trimmed.hardConstraints()).hasSize(1);
+        assertThat(trimmed.estimatedTokens()).isEqualTo(card.estimatedTokens());
+    }
 }

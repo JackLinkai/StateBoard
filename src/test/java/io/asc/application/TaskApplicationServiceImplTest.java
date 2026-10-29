@@ -165,9 +165,9 @@ class TaskApplicationServiceImplTest {
         StateCard card = new StateCard("task-1", 7,
                 java.util.List.of(), java.util.List.of(), java.util.List.of(),
                 java.util.List.of(), java.util.List.of(), 10, T0);
-        when(stateCardQueryService.getStateCard("task-1")).thenReturn(card);
+        when(stateCardQueryService.getStateCard("task-1", null)).thenReturn(card);
 
-        StateCard result = service.getStateCard("task-1");
+        StateCard result = service.getStateCard("task-1", null);
 
         assertThat(result).isSameAs(card);
         verifyNoInteractions(taskStore, stateItemStore);

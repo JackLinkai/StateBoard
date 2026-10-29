@@ -29,6 +29,7 @@ import java.time.Instant;
 @Getter
 @Setter
 @NoArgsConstructor(access = lombok.AccessLevel.PROTECTED)
+@AllArgsConstructor
 public class StateCardVersionEntity {
 
     /** 属于哪个任务，复合键之一，外键 task(task_id)。 */
