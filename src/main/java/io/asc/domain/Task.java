@@ -24,7 +24,12 @@ public record Task(
         Instant createdAt,
 
         /* 最后更新时间。updatedAt 在每次写状态时刷新。 */
-        Instant updatedAt
+        Instant updatedAt,
+
+        /* 任务版本号，每写入一条状态 +1，创建时为 0。
+           写入状态项时同步记进该条 StateItem.version；
+           是后续乐观锁（防并发写冲突）和状态卡按版本回放的依据。 */
+        long version
 ) {
 
     /**

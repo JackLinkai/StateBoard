@@ -21,7 +21,8 @@ public class TaskConverter {
                 task.description(),
                 task.status().name(),
                 task.createdAt(),
-                task.updatedAt()
+                task.updatedAt(),
+                task.version()
         );
     }
 
@@ -32,7 +33,8 @@ public class TaskConverter {
                 entity.getDescription(),
                 Task.TaskStatus.valueOf(entity.getStatus()),
                 entity.getCreatedAt(),
-                entity.getUpdatedAt()
+                entity.getUpdatedAt(),
+                entity.getVersion()
         );
     }
 }

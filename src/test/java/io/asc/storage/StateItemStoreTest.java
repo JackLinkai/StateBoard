@@ -47,7 +47,7 @@ class StateItemStoreTest {
     @Test
     void save_fact_then_read_back_equals() {
         String taskId = "tc-fact-001";
-        taskStore.save(new Task(taskId, "集成测试：存取 Fact", Task.TaskStatus.ACTIVE, NOW, NOW));
+        taskStore.save(new Task(taskId, "集成测试：存取 Fact", Task.TaskStatus.ACTIVE, NOW, NOW, 0));
 
         Fact fact = new Fact("f-001", taskId, "shanghai_sales_last_7d", "120",
                 NOW, Instant.parse("2026-11-05T00:00:00Z"), "tool:query_sales", 1);
@@ -61,7 +61,7 @@ class StateItemStoreTest {
     @Test
     void save_fact_without_ttl_then_read_back_equals() {
         String taskId = "tc-fact-002";
-        taskStore.save(new Task(taskId, "集成测试：无 TTL Fact", Task.TaskStatus.ACTIVE, NOW, NOW));
+        taskStore.save(new Task(taskId, "集成测试：无 TTL Fact", Task.TaskStatus.ACTIVE, NOW, NOW, 0));
 
         Fact fact = new Fact("f-002", taskId, "city_resolved", "上海",
                 NOW, null, "model", 2);
@@ -73,7 +73,7 @@ class StateItemStoreTest {
     @Test
     void findByTaskId_returns_items_in_insert_order() {
         String taskId = "tc-order-001";
-        taskStore.save(new Task(taskId, "集成测试：顺序", Task.TaskStatus.ACTIVE, NOW, NOW));
+        taskStore.save(new Task(taskId, "集成测试：顺序", Task.TaskStatus.ACTIVE, NOW, NOW, 0));
 
         Fact first = new Fact("f-101", taskId, "step", "1", NOW, null, "tool:a", 3);
         Todo second = new Todo("t-101", taskId, "杭州数据待查", Todo.TodoStatus.OPEN,

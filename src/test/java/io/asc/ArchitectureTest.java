@@ -15,7 +15,10 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
  *
  * <p>依赖方向约定：
  * web → application → core → domain
- *                  ↘ storage → domain
+ *         ↓
+ *      storage → domain
+ * （application 只允许经由 storage 顶层的 Store 门面访问存储，
+ *   不许绕过去直接摸 entity / repository / converter）
  */
 class ArchitectureTest {
 
@@ -78,6 +81,41 @@ class ArchitectureTest {
                         "jakarta.persistence..",
                         "org.hibernate..",
                         "org.springframework.data.jpa.."
+                );
+        rule.check(classes);
+    }
+
+    /**
+     * application 层不能反向依赖 web。
+     *
+     * <p>application 编排用例，被 web 调用而不感知 HTTP；
+     * 将来 MCP / 定时任务等入口也是直接调 application，不经过 web。
+     */
+    @Test
+    void application_should_not_depend_on_web() {
+        ArchRule rule = noClasses()
+                .that().resideInAPackage("io.asc.application..")
+                .should().dependOnClassesThat()
+                .resideInAnyPackage("io.asc.web..");
+        rule.check(classes);
+    }
+
+    /**
+     * application 访问存储只能走 Store 门面。
+     *
+     * <p>entity / repository / converter 是 storage 的内部实现，
+     * application 直接 import 它们等于把 JPA 模型泄漏进用例层，
+     * 以后换存储实现时用例全部要改。谁绕过 Store，这里直接红。
+     */
+    @Test
+    void application_must_access_storage_only_through_store_facade() {
+        ArchRule rule = noClasses()
+                .that().resideInAPackage("io.asc.application..")
+                .should().dependOnClassesThat()
+                .resideInAnyPackage(
+                        "io.asc.storage.entity..",
+                        "io.asc.storage.repository..",
+                        "io.asc.storage.converter.."
                 );
         rule.check(classes);
     }
