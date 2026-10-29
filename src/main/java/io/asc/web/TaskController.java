@@ -3,17 +3,22 @@ package io.asc.web;
 import io.asc.application.TaskApplicationService;
 import io.asc.application.TaskLifecycleService;
 import io.asc.domain.Budget;
+import io.asc.domain.CardVersionSummary;
 import io.asc.domain.Constraint;
 import io.asc.domain.StateCard;
 import io.asc.domain.Task;
+import io.asc.domain.Todo;
 import io.asc.web.dto.AddConstraintRequest;
 import io.asc.web.dto.CreateTaskRequest;
 import io.asc.web.dto.HandoffRequest;
 import io.asc.web.dto.RecordFactRequest;
 import io.asc.web.dto.RecordTodoRequest;
+import io.asc.web.dto.UpdateTodoStatusRequest;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 /**
  * 任务与状态的 HTTP 入口。
@@ -32,6 +37,12 @@ public class TaskController {
                           TaskLifecycleService lifecycleService) {
         this.service = service;
         this.lifecycleService = lifecycleService;
+    }
+
+    /** 全量任务列表，最近更新的排前面（面板 / 运维视角）。 */
+    @GetMapping
+    public List<Task> listTasks() {
+        return service.listTasks();
     }
 
     /** 创建任务；带 restoreFrom 时按源任务的当前有效状态恢复出新任务。 */
@@ -91,6 +102,20 @@ public class TaskController {
         service.recordTodo(taskId, req.text(), source);
     }
 
+    /** 待办状态流转：OPEN → DONE / CANCELLED（也可改回 OPEN）。 */
+    @PatchMapping("/{taskId}/todos/{todoId}")
+    public void updateTodoStatus(@PathVariable String taskId,
+                                 @PathVariable String todoId,
+                                 @RequestBody @Valid UpdateTodoStatusRequest req) {
+        service.updateTodoStatus(taskId, todoId, parseTodoStatus(req.status()));
+    }
+
+    /** 列出某任务全部已持久化的版本摘要（回放面板 / 审计用），版本号升序。 */
+    @GetMapping("/{taskId}/versions")
+    public List<CardVersionSummary> listVersions(@PathVariable String taskId) {
+        return lifecycleService.listVersions(taskId);
+    }
+
     /**
      * 拿状态卡。
      *
@@ -111,6 +136,15 @@ public class TaskController {
             return Constraint.ConstraintLevel.valueOf(level.toUpperCase());
         } catch (IllegalArgumentException e) {
             throw new IllegalArgumentException("invalid level: " + level + ", expected HARD or SOFT");
+        }
+    }
+
+    private Todo.TodoStatus parseTodoStatus(String status) {
+        try {
+            return Todo.TodoStatus.valueOf(status.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException(
+                    "invalid status: " + status + ", expected OPEN, DONE or CANCELLED");
         }
     }
 }

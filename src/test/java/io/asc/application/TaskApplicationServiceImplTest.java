@@ -160,6 +160,61 @@ class TaskApplicationServiceImplTest {
     }
 
     @Test
+    @DisplayName("updateTodoStatus：OPEN → DONE，其余字段原样保留，任务版本 +1")
+    void update_todo_status_marks_done_and_bumps_version() {
+        when(taskStore.findById("task-1")).thenReturn(Optional.of(existingTask(3)));
+        when(taskStore.save(any(Task.class))).thenAnswer(inv -> inv.getArgument(0));
+        Todo todo = new Todo("t1", "task-1", "杭州数据待查", Todo.TodoStatus.OPEN,
+                T0.minusSeconds(60), "user", 2);
+        when(stateItemStore.findById("t1")).thenReturn(Optional.of(todo));
+
+        service.updateTodoStatus("task-1", "t1", Todo.TodoStatus.DONE);
+
+        ArgumentCaptor<Todo> captor = ArgumentCaptor.forClass(Todo.class);
+        verify(stateItemStore).save(captor.capture());
+        Todo written = captor.getValue();
+        assertThat(written.id()).isEqualTo("t1");
+        assertThat(written.text()).isEqualTo("杭州数据待查");
+        assertThat(written.status()).isEqualTo(Todo.TodoStatus.DONE);
+        assertThat(written.createdAt()).isEqualTo(T0.minusSeconds(60));
+        assertThat(written.source()).isEqualTo("user");
+        assertThat(written.version()).isEqualTo(4);
+
+        ArgumentCaptor<Task> taskCaptor = ArgumentCaptor.forClass(Task.class);
+        verify(taskStore).save(taskCaptor.capture());
+        assertThat(taskCaptor.getValue().version()).isEqualTo(4);
+    }
+
+    @Test
+    @DisplayName("updateTodoStatus：待办不存在 / 属于别的任务 / 不是待办类型 → TaskNotFoundException")
+    void update_todo_status_unknown_or_mismatched_todo_throws() {
+        when(taskStore.findById("task-1")).thenReturn(Optional.of(existingTask(3)));
+        when(stateItemStore.findById("t-x")).thenReturn(Optional.empty());
+        when(stateItemStore.findById("t-other"))
+                .thenReturn(Optional.of(new Todo("t-other", "task-2", "x",
+                        Todo.TodoStatus.OPEN, T0, "user", 1)));
+        when(stateItemStore.findById("f-not-todo"))
+                .thenReturn(Optional.of(new Fact("f-not-todo", "task-1", "k", "v", T0, null, "tool", 1)));
+
+        assertThatThrownBy(() -> service.updateTodoStatus("task-1", "t-x", Todo.TodoStatus.DONE))
+                .isInstanceOf(TaskNotFoundException.class);
+        assertThatThrownBy(() -> service.updateTodoStatus("task-1", "t-other", Todo.TodoStatus.DONE))
+                .isInstanceOf(TaskNotFoundException.class);
+        assertThatThrownBy(() -> service.updateTodoStatus("task-1", "f-not-todo", Todo.TodoStatus.DONE))
+                .isInstanceOf(TaskNotFoundException.class);
+
+        verify(stateItemStore, org.mockito.Mockito.never()).save(any());
+    }
+
+    @Test
+    @DisplayName("listTasks：透传给 TaskStore.findAll")
+    void list_tasks_delegates_to_store() {
+        when(taskStore.findAll()).thenReturn(java.util.List.of(existingTask(3)));
+
+        assertThat(service.listTasks()).hasSize(1).first().extracting(Task::taskId).isEqualTo("task-1");
+    }
+
+    @Test
     @DisplayName("getStateCard：透传给 StateCardQueryService，不触碰 Store")
     void get_state_card_delegates_to_query_service() {
         StateCard card = new StateCard("task-1", 7,

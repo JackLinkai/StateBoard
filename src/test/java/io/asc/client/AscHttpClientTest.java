@@ -113,6 +113,19 @@ class AscHttpClientTest {
     }
 
     @Test
+    @DisplayName("updateTodo：PATCH 到 todos/{id}，status 字段正确")
+    void update_todo() {
+        server.expect(requestTo("http://asc.test/v1/tasks/task-1/todos/t1"))
+                .andExpect(method(HttpMethod.PATCH))
+                .andExpect(jsonPath("$.status").value("DONE"))
+                .andRespond(withSuccess());
+
+        client.updateTodo("task-1", "t1", "DONE");
+
+        server.verify();
+    }
+
+    @Test
     @DisplayName("getStateCard：budget 档位转小写进 query 参数")
     void get_state_card() {
         server.expect(requestTo("http://asc.test/v1/tasks/task-1/state-card?budget=small"))

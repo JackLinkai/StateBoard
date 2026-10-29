@@ -1,0 +1,20 @@
+{
+  "name": "asc-dashboard",
+  "private": true,
+  "version": "0.4.0",
+  "type": "module",
+  "description": "ASC 可视化调试面板：任务列表 / 状态卡四格视图 / 版本回放 / 交接状态",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^5.1.0",
+    "vite": "^7.1.0"
+  }
+}

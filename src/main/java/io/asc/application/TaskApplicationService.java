@@ -5,8 +5,10 @@ import io.asc.domain.Constraint;
 import io.asc.domain.StateCard;
 import io.asc.domain.StateItem;
 import io.asc.domain.Task;
+import io.asc.domain.Todo;
 
 import java.time.Instant;
+import java.util.List;
 
 /**
  * 任务编排的用例接口：web / MCP 等入口层只看这里，不直接摸 storage。
@@ -33,6 +35,11 @@ public interface TaskApplicationService {
     Task createTask(String taskId, String description);
 
     /**
+     * 全量任务列表，最近更新的排前面（面板 / 运维视角）。
+     */
+    List<Task> listTasks();
+
+    /**
      * 写入一条约束，level 为 null 时按 HARD 处理，source 缺省为 user。
      *
      * @throws TaskNotFoundException 任务不存在时
@@ -54,6 +61,18 @@ public interface TaskApplicationService {
      * @throws TaskNotFoundException 任务不存在时
      */
     void recordTodo(String taskId, String text, String source);
+
+    /**
+     * 待办状态流转（OPEN → DONE / CANCELLED，也允许改回 OPEN）：
+     * 按 id 就地更新该待办的 status，其余字段原样保留，
+     * 任务版本 +1——这是一次正常的状态写入，回放与缓存语义与其他写入一致。
+     *
+     * <p>编译器只把 OPEN 待办放进状态卡，DONE / CANCELLED 从此不再注入；
+     * 原始记录保留在库里，回放历史版本时仍能看到它当时是 OPEN。
+     *
+     * @throws TaskNotFoundException 任务或待办不存在、待办不属于该任务时
+     */
+    void updateTodoStatus(String taskId, String todoId, Todo.TodoStatus status);
 
     /**
      * 记录一条通用状态事件：四类 StateItem 都能走这个入口，

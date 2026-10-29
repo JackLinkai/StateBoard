@@ -91,6 +91,19 @@ class AscClient:
         self._request("POST", f"/v1/tasks/{task_id}/todos",
                       json_body={"text": text, "source": source})
 
+    def update_todo(self, task_id: str, todo_id: str, status: str) -> None:
+        """待办状态流转：status 取 OPEN / DONE / CANCELLED。"""
+        self._request("PATCH", f"/v1/tasks/{task_id}/todos/{todo_id}",
+                      json_body={"status": status})
+
+    def list_tasks(self) -> list:
+        """全量任务列表，最近更新的排前面。"""
+        return self._request("GET", "/v1/tasks")
+
+    def list_card_versions(self, task_id: str) -> list:
+        """列出某任务全部已持久化的状态卡版本摘要（版本号升序）。"""
+        return self._request("GET", f"/v1/tasks/{task_id}/versions")
+
     # ---------- 读取与治理 ----------
 
     def get_state_card(self, task_id: str, budget: Optional[str] = None) -> dict:

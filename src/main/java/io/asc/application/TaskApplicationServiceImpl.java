@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -54,6 +55,12 @@ public class TaskApplicationServiceImpl implements TaskApplicationService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public List<Task> listTasks() {
+        return taskStore.findAll();
+    }
+
+    @Override
     @Transactional
     public void addConstraint(String taskId, String text, Constraint.ConstraintLevel level) {
         // 约束写入与普通事件是同一条编排流程，复用 recordEvent
@@ -75,6 +82,22 @@ public class TaskApplicationServiceImpl implements TaskApplicationService {
     public void recordTodo(String taskId, String text, String source) {
         recordEvent(taskId, new Todo(null, taskId, text, Todo.TodoStatus.OPEN, null,
                 sourceOrDefault(source, "user"), 0));
+    }
+
+    @Override
+    @Transactional
+    public void updateTodoStatus(String taskId, String todoId, Todo.TodoStatus status) {
+        Task task = requireTask(taskId);
+        if (!(stateItemStore.findById(todoId).orElse(null) instanceof Todo todo)
+                || !todo.taskId().equals(taskId)) {
+            throw new TaskNotFoundException(taskId);
+        }
+
+        long newVersion = task.version() + 1;
+        stateItemStore.save(new Todo(todoId, taskId, todo.text(), status,
+                todo.createdAt(), todo.source(), newVersion));
+        taskStore.save(new Task(taskId, task.description(), task.status(),
+                task.createdAt(), Instant.now(), newVersion));
     }
 
     @Override

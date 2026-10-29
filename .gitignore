@@ -37,3 +37,11 @@ __pycache__/
 *.pyc
 .venv/
 *.egg-info/
+
+### Dashboard ###
+dashboard/node_modules/
+dashboard/*.local
+# vite build 产物（npm run build 重新生成）
+src/main/resources/static/
+### Benchmarks 本地结果 ###
+benchmarks/results*.json

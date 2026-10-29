@@ -7,6 +7,7 @@ import io.asc.storage.repository.TaskJpaRepository;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -36,5 +37,12 @@ public class TaskStore {
     /** 按 taskId 取任务。 */
     public Optional<Task> findById(String taskId) {
         return jpaRepository.findById(taskId).map(taskConverter::toDomain);
+    }
+
+    /** 全量任务列表，最近更新的排前面。 */
+    public List<Task> findAll() {
+        return jpaRepository.findAllByOrderByUpdatedAtDesc().stream()
+                .map(taskConverter::toDomain)
+                .toList();
     }
 }

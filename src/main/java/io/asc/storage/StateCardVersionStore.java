@@ -1,5 +1,6 @@
 package io.asc.storage;
 
+import io.asc.domain.CardVersionSummary;
 import io.asc.domain.StateCard;
 import io.asc.storage.entity.StateCardVersionEntity;
 import io.asc.storage.repository.StateCardVersionJpaRepository;
@@ -7,6 +8,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.ObjectMapper;
 
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -53,5 +55,17 @@ public class StateCardVersionStore {
     public Optional<StateCard> findLatest(String taskId) {
         return repository.findTopByTaskIdOrderByVersionDesc(taskId)
                 .map(entity -> objectMapper.readValue(entity.getCard(), StateCard.class));
+    }
+
+    /**
+     * 列出某任务全部已持久化的版本摘要（版本号升序）。
+     * 回放面板 / 审计列表用：只取摘要列，不反序列化整卡。
+     */
+    @Transactional(readOnly = true)
+    public List<CardVersionSummary> listVersions(String taskId) {
+        return repository.findByTaskIdOrderByVersionAsc(taskId).stream()
+                .map(entity -> new CardVersionSummary(entity.getTaskId(), entity.getVersion(),
+                        entity.getEstimatedTokens(), entity.getCompiledAt()))
+                .toList();
     }
 }

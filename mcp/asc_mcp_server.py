@@ -69,6 +69,14 @@ def record_todo(task_id: str, text: str, source: str = "user") -> str:
 
 
 @mcp.tool()
+def update_todo(task_id: str, todo_id: str, status: str) -> str:
+    """待办状态流转：把某条待办标记为 DONE（完成）或 CANCELLED（取消），
+    也可改回 OPEN。完成后不再注入状态卡。todo_id 从状态卡的 openTodos 里取。"""
+    client.update_todo(task_id, todo_id, status.upper())
+    return "todo updated"
+
+
+@mcp.tool()
 def get_state_card(task_id: str, budget: str = "") -> dict:
     """获取当前任务状态卡：必须遵守的约束 / 已确认事实 / 待办 / 已失效信息。
     每轮决策前调用，基于状态卡行动。budget: small/medium/large，留空用默认。"""

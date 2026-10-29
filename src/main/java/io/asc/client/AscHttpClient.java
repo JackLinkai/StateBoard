@@ -74,6 +74,16 @@ public final class AscHttpClient implements AscClient {
     }
 
     @Override
+    public void updateTodo(String taskId, String todoId, String status) {
+        restClient.patch()
+                .uri("/v1/tasks/{id}/todos/{todoId}", taskId, todoId)
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .body(objectMapper.writeValueAsString(new UpdateTodoReq(status)))
+                .retrieve()
+                .toBodilessEntity();
+    }
+
+    @Override
     public StateCard getStateCard(String taskId, Budget budget) {
         return restClient.get()
                 .uri(b -> {
@@ -167,6 +177,8 @@ public final class AscHttpClient implements AscClient {
     private record RecordFactReq(String key, String value, Instant expiresAt, String source) {}
 
     private record RecordTodoReq(String text, String source) {}
+
+    private record UpdateTodoReq(String status) {}
 
     private record HandoffReq(String toAgent) {}
 }

@@ -185,6 +185,17 @@ docker compose up -d
 curl http://localhost:8080/actuator/health
 ```
 
+### 可视化面板（v0.4）
+
+```bash
+cd dashboard && npm install && npm run build   # 产物输出到 src/main/resources/static
+# 重启 asc-server 后访问 http://localhost:8080 即可
+```
+
+开发模式：`npm run dev`（Vite 5173 端口，`/v1` 自动代理到 8080）。
+
+面板功能：任务列表与创建/恢复、状态卡四格视图、待办一键完成/取消、快照与交接、版本条点击回放。
+
 ### 配置（`application.yml` 示意）
 
 ```yaml
@@ -230,16 +241,13 @@ curl -X POST http://localhost:8080/v1/tasks/order-check-001/constraints \
 ### 3. 写入工具返回事实
 
 ```bash
-curl -X POST http://localhost:8080/v1/tasks/order-check-001/events \
+curl -X POST http://localhost:8080/v1/tasks/order-check-001/facts \
   -H "Content-Type: application/json" \
   -d '{
-    "type": "TOOL_RESULT",
-    "tool": "query_sales",
-    "payload": {
-      "key": "shanghai_sales_last_7d",
-      "value": "120",
-      "expiresAt": "2026-10-26T00:00:00Z"
-    }
+    "key": "shanghai_sales_last_7d",
+    "value": "120",
+    "expiresAt": "2026-10-26T00:00:00Z",
+    "source": "tool:query_sales"
   }'
 ```
 
@@ -283,7 +291,22 @@ curl -X POST http://localhost:8080/v1/tasks \
   -d '{"taskId": "order-check-002", "restoreFrom": "order-check-001"}'
 ```
 
-### 6. 版本回放
+### 6. 待办状态流转 / 任务列表 / 版本列表
+
+```bash
+# 待办完成（不再注入状态卡）：PATCH /v1/tasks/{id}/todos/{todoId}
+curl -X PATCH http://localhost:8080/v1/tasks/order-check-001/todos/t2 \
+  -H "Content-Type: application/json" \
+  -d '{"status": "DONE"}'
+
+# 任务列表（面板 / 运维）
+curl http://localhost:8080/v1/tasks
+
+# 某任务全部已持久化的状态卡版本（回放面板 / 审计）
+curl http://localhost:8080/v1/tasks/order-check-001/versions
+```
+
+### 7. 版本回放
 
 ```bash
 curl "http://localhost:8080/v1/tasks/order-check-001/replay?version=5"
@@ -349,7 +372,7 @@ String prompt = card.toPrompt() + "\n\n用户输入：" + userInput;
 }
 ```
 
-依赖：`pip install "mcp>=2"`。提供 9 个工具：create_task / add_constraint / record_fact / record_todo / get_state_card / snapshot / restore_task / replay / handoff。
+依赖：`pip install "mcp>=2"`。提供 10 个工具：create_task / add_constraint / record_fact / record_todo / update_todo / get_state_card / snapshot / restore_task / replay / handoff。
 
 ---
 
@@ -370,7 +393,30 @@ ASC 的目标不是“更花哨的上下文”，而是可验证的改善。评�
 | **重复工具调用次数**    | 相同工具 + 相同参数重复调用次数 |
 | **恢复任务重放步数**    | 跨会话恢复后回到原进度所需步数   |
 
-> 评测数据集与脚本将在 MVP 阶段开源，见 [Roadmap](#roadmap)。
+> 评测数据集与脚本已随 v0.4 开源：[benchmarks/](benchmarks/)。
+
+运行（需先启动 asc-server）：
+
+```bash
+python benchmarks/runner.py --window 350 --json-out results.json
+```
+
+数据集在 [benchmarks/datasets/](benchmarks/datasets/)（JSONL，每行一个场景），当前包含三类场景：
+
+| 场景                        | 考察点                                       |
+|---------------------------|--------------------------------------------|
+| `constraint_erosion`      | 开场约束被多轮干扰稀释后，Agent 是否还守得住边界 |
+| `fact_conflict`           | 数仓修正后，Agent 是否引用唯一有效值而不是旧值    |
+| `resume_progress`         | 跨会话恢复后，回原进度要几步、重复查询有多少      |
+
+MockAgent 是确定性规则解析器（无 LLM），两组行为差异完全由"注入内容的质量"驱动。一次实测（窗口 350 字符，3 场景）：
+
+| 指标              | Baseline | ASC   |
+|-----------------|----------|-------|
+| 约束违反率/场景    | 0.33     | **0** |
+| 重复工具调用总数   | 3        | **0** |
+| 平均每轮输入 token | 161      | **47** |
+| 恢复重放步数总数   | 2        | **1** |
 
 ---
 
@@ -388,8 +434,8 @@ ASC 的目标不是“更花哨的上下文”，而是可验证的改善。评�
 - [x] LangGraph / CrewAI HTTP 适配示例（[examples/](examples/)）
 - [x] Spring AI / LangChain4j 适配示例（Java SDK `io.asc.client`）
 - [x] MCP Server（[mcp/asc_mcp_server.py](mcp/asc_mcp_server.py)）
-- [ ] 可视化调试面板
-- [ ] 评测数据集与脚本
+- [x] 可视化调试面板（[dashboard/](dashboard/)，构建后随服务访问 `http://localhost:8080`）
+- [x] 评测数据集与脚本（[benchmarks/](benchmarks/)）
 
 > 勾选状态请以实际仓库进度为准。详细设计见 [docs/architecture.md](docs/architecture.md)
 
@@ -417,11 +463,16 @@ ASC 的目标不是“更花哨的上下文”，而是可验证的改善。评�
 - Spring AI / LangChain4j Starter（Java SDK `io.asc.client`）
 - MCP Server（[mcp/asc_mcp_server.py](mcp/asc_mcp_server.py)）
 
-### v0.4 — 可观测与评测
+### v0.4 — 可观测与评测 ✅
 
-- React 可视化面板
-- 评测数据集与脚本
-- 冲突消解策略插件化
+- React 可视化面板（任务列表 / 状态卡四格视图 / 版本回放 / 待办流转 / 交接）
+- 评测数据集与脚本（[benchmarks/](benchmarks/)，Baseline vs ASC 五指标对比）
+- 任务列表 / 待办状态流转 / 版本列表 API（`GET /v1/tasks`、`PATCH /v1/tasks/{id}/todos/{id}`、`GET /v1/tasks/{id}/versions`）
+- Dockerfile + Docker Compose 一键启动 asc-server
+
+### v0.5 — 编译策略演进
+
+- 冲突消解策略插件化（LATEST_WINS / MANUAL / REJECT）
 
 ### 长期
 

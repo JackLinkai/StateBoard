@@ -107,6 +107,31 @@ class AscClientTest(unittest.TestCase):
 
         self.assertEqual(self.session.calls[0]["json"], {"toAgent": "agent-b"})
 
+    def test_update_todo_patches_status(self):
+        self.session.responses.append(FakeResponse(200))
+
+        self.client.update_todo("t1", "todo-9", "DONE")
+
+        call = self.session.calls[0]
+        self.assertEqual(call["method"], "PATCH")
+        self.assertEqual(call["url"], "http://asc.test/v1/tasks/t1/todos/todo-9")
+        self.assertEqual(call["json"], {"status": "DONE"})
+
+    def test_list_tasks_and_card_versions(self):
+        self.session.responses.append(FakeResponse(200, [{"taskId": "t1"}]))
+        self.session.responses.append(FakeResponse(
+            200, [{"taskId": "t1", "version": 3, "estimatedTokens": 120}]))
+
+        tasks = self.client.list_tasks()
+        versions = self.client.list_card_versions("t1")
+
+        self.assertEqual(self.session.calls[0]["method"], "GET")
+        self.assertEqual(self.session.calls[0]["url"], "http://asc.test/v1/tasks")
+        self.assertEqual(self.session.calls[1]["url"],
+                         "http://asc.test/v1/tasks/t1/versions")
+        self.assertEqual(tasks[0]["taskId"], "t1")
+        self.assertEqual(versions[0]["version"], 3)
+
     def test_no_body_returns_none(self):
         self.session.responses.append(FakeResponse(201))
 

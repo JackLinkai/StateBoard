@@ -3,6 +3,7 @@ package io.asc.storage.repository;
 import io.asc.storage.entity.StateCardVersionEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -16,4 +17,7 @@ public interface StateCardVersionJpaRepository
 
     /** 取某任务最新一版状态卡。 */
     Optional<StateCardVersionEntity> findTopByTaskIdOrderByVersionDesc(String taskId);
+
+    /** 取某任务全部已持久化的版本，版本号升序（回放面板列版本用）。 */
+    List<StateCardVersionEntity> findByTaskIdOrderByVersionAsc(String taskId);
 }

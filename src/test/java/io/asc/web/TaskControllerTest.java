@@ -278,4 +278,80 @@ class TaskControllerTest {
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("TASK_ALREADY_EXISTS"));
     }
+
+    /* ---------- v0.4 补齐：任务列表 / 待办流转 / 版本列表 ---------- */
+
+    @Test
+    @DisplayName("GET /v1/tasks：200，返回任务列表")
+    void list_tasks_returns_200() throws Exception {
+        when(service.listTasks()).thenReturn(List.of(
+                new Task("task-2", "desc-2", Task.TaskStatus.ACTIVE, NOW, NOW, 4,
+                        "agent-b", 1),
+                new Task("task-1", "desc-1", Task.TaskStatus.SNAPSHOTTED, NOW, NOW, 7)));
+
+        mockMvc.perform(get("/v1/tasks"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].taskId").value("task-2"))
+                .andExpect(jsonPath("$[0].ownerAgent").value("agent-b"))
+                .andExpect(jsonPath("$[0].handoffCount").value(1))
+                .andExpect(jsonPath("$[1].status").value("SNAPSHOTTED"));
+    }
+
+    @Test
+    @DisplayName("PATCH /{id}/todos/{todoId}：200，status 解析为枚举透传")
+    void update_todo_status_returns_200() throws Exception {
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .patch("/v1/tasks/task-1/todos/t1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"status\":\"done\"}"))
+                .andExpect(status().isOk());
+
+        verify(service).updateTodoStatus("task-1", "t1", io.asc.domain.Todo.TodoStatus.DONE);
+    }
+
+    @Test
+    @DisplayName("PATCH /{id}/todos/{todoId}：status 非法 → 400 INVALID_ARGUMENT")
+    void update_todo_status_invalid_returns_400() throws Exception {
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .patch("/v1/tasks/task-1/todos/t1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"status\":\"FINISHED\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_ARGUMENT"));
+    }
+
+    @Test
+    @DisplayName("PATCH /{id}/todos/{todoId}：status 缺失 → 400 校验失败")
+    void update_todo_status_blank_returns_400() throws Exception {
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .patch("/v1/tasks/task-1/todos/t1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+    }
+
+    @Test
+    @DisplayName("GET /{id}/versions：200，返回版本摘要列表")
+    void list_versions_returns_200() throws Exception {
+        when(lifecycleService.listVersions("task-1")).thenReturn(List.of(
+                new io.asc.domain.CardVersionSummary("task-1", 3, 120, NOW),
+                new io.asc.domain.CardVersionSummary("task-1", 7, 210, NOW)));
+
+        mockMvc.perform(get("/v1/tasks/task-1/versions"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].version").value(3))
+                .andExpect(jsonPath("$[0].estimatedTokens").value(120))
+                .andExpect(jsonPath("$[1].version").value(7));
+    }
+
+    @Test
+    @DisplayName("GET /{id}/versions：任务不存在 → 404 TASK_NOT_FOUND")
+    void list_versions_missing_task_returns_404() throws Exception {
+        when(lifecycleService.listVersions("task-x")).thenThrow(new TaskNotFoundException("task-x"));
+
+        mockMvc.perform(get("/v1/tasks/task-x/versions"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("TASK_NOT_FOUND"));
+    }
 }

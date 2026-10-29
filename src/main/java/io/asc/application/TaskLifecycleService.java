@@ -1,6 +1,7 @@
 package io.asc.application;
 
 import io.asc.core.StateCardCompiler;
+import io.asc.domain.CardVersionSummary;
 import io.asc.domain.Constraint;
 import io.asc.domain.Fact;
 import io.asc.domain.InvalidatedItem;
@@ -15,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -152,6 +154,18 @@ public class TaskLifecycleService {
         StateCard card = compiler.compile(taskId, stateItemStore.findByTaskId(taskId), now);
         stateCardVersionStore.save(card);
         return card;
+    }
+
+    /**
+     * 列出某任务全部已持久化的版本摘要（版本号升序），回放面板 / 审计用。
+     *
+     * @throws TaskNotFoundException 任务不存在时
+     */
+    @Transactional(readOnly = true)
+    public List<CardVersionSummary> listVersions(String taskId) {
+        taskStore.findById(taskId)
+                .orElseThrow(() -> new TaskNotFoundException(taskId));
+        return stateCardVersionStore.listVersions(taskId);
     }
 
     /**

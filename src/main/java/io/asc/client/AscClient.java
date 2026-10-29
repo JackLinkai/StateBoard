@@ -24,6 +24,9 @@ public interface AscClient {
 
     void recordTodo(String taskId, String text, String source);
 
+    /** 待办状态流转：status 取 OPEN / DONE / CANCELLED。 */
+    void updateTodo(String taskId, String todoId, String status);
+
     StateCard getStateCard(String taskId, Budget budget);
 
     StateCard snapshot(String taskId);
