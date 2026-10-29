@@ -2,6 +2,7 @@ package io.asc.application;
 
 import io.asc.domain.Constraint;
 import io.asc.domain.Fact;
+import io.asc.domain.StateCard;
 import io.asc.domain.Task;
 import io.asc.domain.Todo;
 import io.asc.storage.StateItemStore;
@@ -19,15 +20,17 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 /**
- * application 层纯单元测试：Mockito 模拟两个 Store，不连数据库。
+ * application 层纯单元测试：Mockito 模拟 Store 和状态卡查询，不连数据库。
  *
- * <p>验证编排三件事：任务不存在抛 TaskNotFoundException、
- * 状态项按服务端规则归一化落库、任务版本 +1 且 updatedAt 刷新。
+ * <p>验证编排语义：任务不存在抛 TaskNotFoundException、
+ * 各写入入口按服务端规则归一化（taskId/version 覆盖、缺省值补齐）、
+ * 任务版本 +1 且 updatedAt 刷新、状态卡查询透传给 StateCardQueryService。
  * 持久化本身由 storage 层的 StateItemStoreTest（Testcontainers）覆盖。
  */
 @ExtendWith(MockitoExtension.class)
@@ -38,6 +41,9 @@ class TaskApplicationServiceImplTest {
 
     @Mock
     private StateItemStore stateItemStore;
+
+    @Mock
+    private StateCardQueryService stateCardQueryService;
 
     @InjectMocks
     private TaskApplicationServiceImpl service;
@@ -80,8 +86,7 @@ class TaskApplicationServiceImplTest {
     @DisplayName("recordEvent：Fact 归一化（taskId/version 覆盖、缺 id 补 UUID），任务版本 +1")
     void record_event_normalizes_fact_and_bumps_version() {
         when(taskStore.findById("task-1")).thenReturn(Optional.of(existingTask(5)));
-        when(taskStore.save(org.mockito.ArgumentMatchers.any(Task.class)))
-                .thenAnswer(inv -> inv.getArgument(0));
+        when(taskStore.save(any(Task.class))).thenAnswer(inv -> inv.getArgument(0));
 
         // 调用方给了错误的 taskId、过大的 version、null id
         service.recordEvent("task-1",
@@ -102,36 +107,69 @@ class TaskApplicationServiceImplTest {
     }
 
     @Test
-    @DisplayName("addConstraint：HARD 约束归一化写入，版本递增")
-    void add_constraint_normalizes_and_bumps_version() {
+    @DisplayName("addConstraint：level=null 时按 HARD 处理，source 固定 user")
+    void add_constraint_defaults_level_to_hard() {
         when(taskStore.findById("task-1")).thenReturn(Optional.of(existingTask(0)));
-        when(taskStore.save(org.mockito.ArgumentMatchers.any(Task.class)))
-                .thenAnswer(inv -> inv.getArgument(0));
+        when(taskStore.save(any(Task.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        service.addConstraint("task-1", new Constraint(
-                "c1", "ignored-task", "只允许查询最近30天数据",
-                Constraint.ConstraintLevel.HARD, T0, "user", 42));
+        service.addConstraint("task-1", "只允许查询最近30天数据", null);
 
         ArgumentCaptor<Constraint> captor = ArgumentCaptor.forClass(Constraint.class);
         verify(stateItemStore).save(captor.capture());
-        assertThat(captor.getValue().taskId()).isEqualTo("task-1");
-        assertThat(captor.getValue().version()).isEqualTo(1);
-        assertThat(captor.getValue().id()).isEqualTo("c1");
+        Constraint written = captor.getValue();
+        assertThat(written.taskId()).isEqualTo("task-1");
+        assertThat(written.level()).isEqualTo(Constraint.ConstraintLevel.HARD);
+        assertThat(written.source()).isEqualTo("user");
+        assertThat(written.version()).isEqualTo(1);
     }
 
     @Test
-    @DisplayName("recordEvent：Todo 与 InvalidatedItem 同样走归一化（sealed switch 穷尽）")
-    void record_event_covers_todo_and_invalidated() {
+    @DisplayName("recordFact：字段透传，source 空白时缺省为 tool")
+    void record_fact_defaults_source_to_tool() {
+        when(taskStore.findById("task-1")).thenReturn(Optional.of(existingTask(2)));
+        when(taskStore.save(any(Task.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Instant expiresAt = T0.plusSeconds(86400);
+        service.recordFact("task-1", "shanghai_sales", "120", expiresAt, "  ");
+
+        ArgumentCaptor<Fact> captor = ArgumentCaptor.forClass(Fact.class);
+        verify(stateItemStore).save(captor.capture());
+        Fact written = captor.getValue();
+        assertThat(written.key()).isEqualTo("shanghai_sales");
+        assertThat(written.value()).isEqualTo("120");
+        assertThat(written.expiresAt()).isEqualTo(expiresAt);
+        assertThat(written.source()).isEqualTo("tool");
+        assertThat(written.version()).isEqualTo(3);
+    }
+
+    @Test
+    @DisplayName("recordTodo：初始 OPEN，source 缺省为 user")
+    void record_todo_defaults_source_to_user() {
         when(taskStore.findById("task-1")).thenReturn(Optional.of(existingTask(1)));
-        when(taskStore.save(org.mockito.ArgumentMatchers.any(Task.class)))
-                .thenAnswer(inv -> inv.getArgument(0));
+        when(taskStore.save(any(Task.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        service.recordEvent("task-1", new Todo(
-                "t1", "wrong", "杭州数据待查", Todo.TodoStatus.OPEN, T0, "model", 9));
+        service.recordTodo("task-1", "杭州数据待查", null);
 
-        ArgumentCaptor<Todo> todoCaptor = ArgumentCaptor.forClass(Todo.class);
-        verify(stateItemStore).save(todoCaptor.capture());
-        assertThat(todoCaptor.getValue().taskId()).isEqualTo("task-1");
-        assertThat(todoCaptor.getValue().version()).isEqualTo(2);
+        ArgumentCaptor<Todo> captor = ArgumentCaptor.forClass(Todo.class);
+        verify(stateItemStore).save(captor.capture());
+        Todo written = captor.getValue();
+        assertThat(written.text()).isEqualTo("杭州数据待查");
+        assertThat(written.status()).isEqualTo(Todo.TodoStatus.OPEN);
+        assertThat(written.source()).isEqualTo("user");
+        assertThat(written.version()).isEqualTo(2);
+    }
+
+    @Test
+    @DisplayName("getStateCard：透传给 StateCardQueryService，不触碰 Store")
+    void get_state_card_delegates_to_query_service() {
+        StateCard card = new StateCard("task-1", 7,
+                java.util.List.of(), java.util.List.of(), java.util.List.of(),
+                java.util.List.of(), java.util.List.of(), 10, T0);
+        when(stateCardQueryService.getStateCard("task-1")).thenReturn(card);
+
+        StateCard result = service.getStateCard("task-1");
+
+        assertThat(result).isSameAs(card);
+        verifyNoInteractions(taskStore, stateItemStore);
     }
 }

@@ -3,6 +3,7 @@ package io.asc.application;
 import io.asc.domain.Constraint;
 import io.asc.domain.Fact;
 import io.asc.domain.InvalidatedItem;
+import io.asc.domain.StateCard;
 import io.asc.domain.StateItem;
 import io.asc.domain.Task;
 import io.asc.domain.Todo;
@@ -35,10 +36,13 @@ public class TaskApplicationServiceImpl implements TaskApplicationService {
 
     private final TaskStore taskStore;
     private final StateItemStore stateItemStore;
+    private final StateCardQueryService stateCardQueryService;
 
-    public TaskApplicationServiceImpl(TaskStore taskStore, StateItemStore stateItemStore) {
+    public TaskApplicationServiceImpl(TaskStore taskStore, StateItemStore stateItemStore,
+                                      StateCardQueryService stateCardQueryService) {
         this.taskStore = taskStore;
         this.stateItemStore = stateItemStore;
+        this.stateCardQueryService = stateCardQueryService;
     }
 
     @Override
@@ -50,9 +54,32 @@ public class TaskApplicationServiceImpl implements TaskApplicationService {
 
     @Override
     @Transactional
-    public void addConstraint(String taskId, Constraint constraint) {
+    public void addConstraint(String taskId, String text, Constraint.ConstraintLevel level) {
         // 约束写入与普通事件是同一条编排流程，复用 recordEvent
-        recordEvent(taskId, constraint);
+        recordEvent(taskId, new Constraint(null, taskId, text,
+                level == null ? Constraint.ConstraintLevel.HARD : level,
+                null, "user", 0));
+    }
+
+    @Override
+    @Transactional
+    public void recordFact(String taskId, String key, String value,
+                           Instant expiresAt, String source) {
+        recordEvent(taskId, new Fact(null, taskId, key, value, null, expiresAt,
+                sourceOrDefault(source, "tool"), 0));
+    }
+
+    @Override
+    @Transactional
+    public void recordTodo(String taskId, String text, String source) {
+        recordEvent(taskId, new Todo(null, taskId, text, Todo.TodoStatus.OPEN, null,
+                sourceOrDefault(source, "user"), 0));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public StateCard getStateCard(String taskId) {
+        return stateCardQueryService.getStateCard(taskId);
     }
 
     @Override
@@ -102,5 +129,9 @@ public class TaskApplicationServiceImpl implements TaskApplicationService {
 
     private Instant createdAtOrDefault(Instant createdAt) {
         return createdAt != null ? createdAt : Instant.now();
+    }
+
+    private String sourceOrDefault(String source, String fallback) {
+        return source != null && !source.isBlank() ? source : fallback;
     }
 }
