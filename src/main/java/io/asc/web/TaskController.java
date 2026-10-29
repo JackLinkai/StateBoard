@@ -8,6 +8,7 @@ import io.asc.domain.StateCard;
 import io.asc.domain.Task;
 import io.asc.web.dto.AddConstraintRequest;
 import io.asc.web.dto.CreateTaskRequest;
+import io.asc.web.dto.HandoffRequest;
 import io.asc.web.dto.RecordFactRequest;
 import io.asc.web.dto.RecordTodoRequest;
 import jakarta.validation.Valid;
@@ -54,6 +55,13 @@ public class TaskController {
     public StateCard replay(@PathVariable String taskId,
                             @RequestParam(required = false) Long version) {
         return lifecycleService.replay(taskId, version);
+    }
+
+    /** 多 Agent 交接：移交给 toAgent，返回当前全量状态卡给接手方直接注入上下文。 */
+    @PostMapping("/{taskId}/handoff")
+    public StateCard handoff(@PathVariable String taskId,
+                             @RequestBody @Valid HandoffRequest req) {
+        return lifecycleService.handoff(taskId, req.toAgent());
     }
 
     /** 写约束。level 可空，默认 HARD。 */

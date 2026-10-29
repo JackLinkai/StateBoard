@@ -126,6 +126,35 @@ public class TaskLifecycleService {
     }
 
     /**
+     * 多 Agent 交接：把任务移交给另一个 Agent，并返回当前全量状态卡——
+     * 接手方拿卡即接管，不需要翻聊天记录。
+     *
+     * <p>交接只是"换人"：ownerAgent 更新、handoffCount +1，任务和状态卡原样不动
+     * （README 的痛点是"交接靠传整段历史"，这里的答案是"交接即拿卡"）。
+     *
+     * @param toAgent 接手方 Agent 标识，必填
+     * @return 交接时刻的全量状态卡，给接手方直接注入上下文
+     * @throws TaskNotFoundException    任务不存在时
+     * @throws IllegalArgumentException toAgent 为空时
+     */
+    @Transactional
+    public StateCard handoff(String taskId, String toAgent) {
+        if (toAgent == null || toAgent.isBlank()) {
+            throw new IllegalArgumentException("toAgent must not be blank");
+        }
+        Task task = taskStore.findById(taskId)
+                .orElseThrow(() -> new TaskNotFoundException(taskId));
+        Instant now = Instant.now();
+        taskStore.save(new Task(task.taskId(), task.description(), task.status(),
+                task.createdAt(), now, task.version(), toAgent.trim(),
+                task.handoffCount() + 1));
+
+        StateCard card = compiler.compile(taskId, stateItemStore.findByTaskId(taskId), now);
+        stateCardVersionStore.save(card);
+        return card;
+    }
+
+    /**
      * 把一条活状态复制到新任务：ID 重新生成、taskId 换新、
      * createdAt / source 保留（溯源"这条信息是什么时候、谁带来的"），
      * version 由 recordEvent 按新任务的版本序列重新分配。

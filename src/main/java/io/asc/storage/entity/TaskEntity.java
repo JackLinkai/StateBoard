@@ -53,4 +53,12 @@ public class TaskEntity {
     /** 任务版本号，每写入一条状态 +1，见 domain.Task.version。 */
     @Column(name = "version", nullable = false)
     private long version;
+
+    /** 当前持有任务的 Agent 标识，交接时更新；没交接过为 null。 */
+    @Column(name = "owner_agent")
+    private String ownerAgent;
+
+    /** 交接次数，每次 handoff +1。 */
+    @Column(name = "handoff_count", nullable = false)
+    private long handoffCount;
 }

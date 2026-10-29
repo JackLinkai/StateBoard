@@ -22,7 +22,9 @@ public class TaskConverter {
                 task.status().name(),
                 task.createdAt(),
                 task.updatedAt(),
-                task.version()
+                task.version(),
+                task.ownerAgent(),
+                task.handoffCount()
         );
     }
 
@@ -34,7 +36,9 @@ public class TaskConverter {
                 Task.TaskStatus.valueOf(entity.getStatus()),
                 entity.getCreatedAt(),
                 entity.getUpdatedAt(),
-                entity.getVersion()
+                entity.getVersion(),
+                entity.getOwnerAgent(),
+                entity.getHandoffCount()
         );
     }
 }

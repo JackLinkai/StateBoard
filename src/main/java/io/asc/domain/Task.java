@@ -29,8 +29,23 @@ public record Task(
         /* 任务版本号，每写入一条状态 +1，创建时为 0。
            写入状态项时同步记进该条 StateItem.version；
            是后续乐观锁（防并发写冲突）和状态卡按版本回放的依据。 */
-        long version
+        long version,
+
+        /* 当前持有该任务的 Agent 标识。null 表示还没经过交接
+           （单 Agent 会话或调用方没报身份）。交接只是"换人"，状态卡不变。 */
+        String ownerAgent,
+
+        /* 交接次数，每次 handoff +1。审计用：一个任务被来回交了几手。 */
+        long handoffCount
 ) {
+
+    /**
+     * 便捷构造：未经过交接的任务（ownerAgent=null、handoffCount=0）。
+     */
+    public Task(String taskId, String description, TaskStatus status,
+                Instant createdAt, Instant updatedAt, long version) {
+        this(taskId, description, status, createdAt, updatedAt, version, null, 0);
+    }
 
     /**
      * 任务状态。

@@ -242,6 +242,31 @@ class TaskControllerTest {
     }
 
     @Test
+    @DisplayName("POST /{id}/handoff：200，返回交接时刻的全量卡")
+    void handoff_returns_200_with_card() throws Exception {
+        when(lifecycleService.handoff("task-1", "agent-b")).thenReturn(new StateCard(
+                "task-1", 7, List.of(), List.of(), List.of(), List.of(), List.of(), 66, NOW));
+
+        mockMvc.perform(post("/v1/tasks/task-1/handoff")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"toAgent\":\"agent-b\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.taskId").value("task-1"))
+                .andExpect(jsonPath("$.estimatedTokens").value(66));
+
+        verify(lifecycleService).handoff("task-1", "agent-b");
+    }
+
+    @Test
+    @DisplayName("POST /{id}/handoff：toAgent 缺失 → 400 校验失败")
+    void handoff_blank_to_agent_returns_400() throws Exception {
+        mockMvc.perform(post("/v1/tasks/task-1/handoff")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     @DisplayName("POST /v1/tasks 新 ID 与已有任务冲突 → 409 TASK_ALREADY_EXISTS")
     void restore_conflicting_task_id_returns_409() throws Exception {
         when(lifecycleService.restore("task-1", "task-0", null))

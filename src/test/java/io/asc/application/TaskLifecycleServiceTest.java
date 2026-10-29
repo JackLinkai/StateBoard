@@ -188,6 +188,48 @@ class TaskLifecycleServiceTest {
         verify(taskApplicationService, never()).recordEvent(anyString(), any());
     }
 
+    /* ---------- handoff：多 Agent 交接 ---------- */
+
+    @Test
+    @DisplayName("handoff：ownerAgent 更新为接手方、handoffCount +1，返回全量卡并落库")
+    void handoff_transfers_owner_and_returns_card() {
+        when(taskStore.findById(SRC)).thenReturn(Optional.of(task(SRC, 5, Task.TaskStatus.ACTIVE)));
+        List<StateItem> items = List.of();
+        when(stateItemStore.findByTaskId(SRC)).thenReturn(items);
+        StateCard card = new StateCard(SRC, 5, List.of(), List.of(), List.of(),
+                List.of(), List.of(), 10, T0);
+        when(compiler.compile(eq(SRC), eq(items), any())).thenReturn(card);
+
+        StateCard result = service.handoff(SRC, "agent-b");
+
+        assertThat(result).isSameAs(card);
+        ArgumentCaptor<Task> captor = ArgumentCaptor.forClass(Task.class);
+        verify(taskStore).save(captor.capture());
+        assertThat(captor.getValue().ownerAgent()).isEqualTo("agent-b");
+        assertThat(captor.getValue().handoffCount()).isEqualTo(1);
+        verify(stateCardVersionStore).save(card);
+    }
+
+    @Test
+    @DisplayName("handoff：任务不存在抛 TaskNotFoundException，零副作用")
+    void handoff_missing_task_throws() {
+        when(taskStore.findById("no-such")).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.handoff("no-such", "agent-b"))
+                .isInstanceOf(TaskNotFoundException.class);
+
+        verifyNoInteractions(stateItemStore, compiler, stateCardVersionStore);
+    }
+
+    @Test
+    @DisplayName("handoff：toAgent 空白直接拒绝，连任务都不查")
+    void handoff_blank_to_agent_rejected() {
+        assertThatThrownBy(() -> service.handoff(SRC, "  "))
+                .isInstanceOf(IllegalArgumentException.class);
+
+        verifyNoInteractions(taskStore, stateItemStore, compiler, stateCardVersionStore);
+    }
+
     @Test
     @DisplayName("replay：显式版本走 store.find，取不到抛 CardNotFoundException")
     void replay_missing_version_throws() {
