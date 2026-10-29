@@ -31,3 +31,9 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### Python SDK / MCP ###
+__pycache__/
+*.pyc
+.venv/
+*.egg-info/

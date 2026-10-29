@@ -63,4 +63,51 @@ public record StateCard(
         openTodos = List.copyOf(openTodos);
         invalidated = List.copyOf(invalidated);
     }
+
+    /**
+     * 渲染成可直接拼进 system prompt 的文本。
+     *
+     * <p>四格分区，空格省略（省 token）；失效项标注失效原因和替代者。
+     * 典型用法：{@code String prompt = card.toPrompt() + "\n\n用户输入：" + userInput}。
+     */
+    public String toPrompt() {
+        StringBuilder sb = new StringBuilder()
+                .append("【任务状态卡】task=").append(taskId)
+                .append(" v").append(version).append('\n');
+        if (!hardConstraints.isEmpty()) {
+            sb.append("【必须遵守】\n");
+            for (Constraint c : hardConstraints) {
+                sb.append("- ").append(c.text()).append('\n');
+            }
+        }
+        if (!softConstraints.isEmpty()) {
+            sb.append("【软约束（尽量遵守）】\n");
+            for (Constraint c : softConstraints) {
+                sb.append("- ").append(c.text()).append('\n');
+            }
+        }
+        if (!verifiedFacts.isEmpty()) {
+            sb.append("【已确认事实】\n");
+            for (Fact f : verifiedFacts) {
+                sb.append("- ").append(f.key()).append(" = ").append(f.value()).append('\n');
+            }
+        }
+        if (!openTodos.isEmpty()) {
+            sb.append("【待办】\n");
+            for (Todo t : openTodos) {
+                sb.append("- ").append(t.text()).append('\n');
+            }
+        }
+        if (!invalidated.isEmpty()) {
+            sb.append("【已失效/冲突，勿再使用】\n");
+            for (InvalidatedItem i : invalidated) {
+                sb.append("- ").append(i.id()).append(": ").append(i.reason());
+                if (i.supersededBy() != null) {
+                    sb.append("（已被 ").append(i.supersededBy()).append(" 取代）");
+                }
+                sb.append('\n');
+            }
+        }
+        return sb.toString().stripTrailing();
+    }
 }

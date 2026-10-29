@@ -295,53 +295,61 @@ curl "http://localhost:8080/v1/tasks/order-check-001/replay?version=5"
 
 ### Python（LangGraph / CrewAI）
 
-通过 HTTP 桥接。在 LLM 调用前拉取状态卡，在工具返回后写入事件：
+安装 SDK（仅依赖 requests）：
+
+```bash
+cd sdk/python && pip install .
+```
+
+在 LLM 调用前拉取状态卡，在工具返回后写入事件：
 
 ```python
-import requests
+from asc import AscClient
 
-ASC = "http://localhost:8080"
+asc = AscClient("http://localhost:8080")
+asc.add_constraint("order-check-001", "只允许查询最近30天数据", level="HARD")
 
-def get_state_card(task_id: str) -> str:
-    r = requests.get(f"{ASC}/v1/tasks/{task_id}/state-card", params={"budget": "small"})
-    return r.json()
+# 每轮决策前
+card = asc.get_state_card("order-check-001", budget="small")
+prompt = str(card) + "\n\n用户输入：" + user_input
 
-def record_tool_result(task_id: str, tool: str, payload: dict):
-    requests.post(f"{ASC}/v1/tasks/{task_id}/events", json={
-        "type": "TOOL_RESULT", "tool": tool, "payload": payload
-    })
-
-# LangGraph 节点内
-state_card = get_state_card("order-check-001")
-prompt = f"{state_card}\n\n用户输入：{user_input}"
+# 工具返回后（同 key 自动 LATEST_WINS 冲突消解）
+asc.record_fact("order-check-001", "shanghai_sales", "120", source="tool:query_sales")
 ```
+
+完整胶水示例：[examples/langgraph_example.py](examples/langgraph_example.py)、[examples/crewai_example.py](examples/crewai_example.py)。
 
 ### Java（Spring AI / LangChain4j）
 
-直接依赖 ASC Java SDK（开发中），或在工具调用前后调用 REST API：
+Java SDK 在 `io.asc.client` 包内（服务同仓库直接可用）：
 
 ```java
-StateCard card = ascClient.getStateCard("order-check-001", Budget.SMALL);
+AscClient asc = AscHttpClient.create("http://localhost:8080");
+asc.recordFact(taskId, "shanghai_sales", "120", null, "tool:query_sales");
+
+StateCard card = asc.getStateCard("order-check-001", Budget.SMALL);
 String prompt = card.toPrompt() + "\n\n用户输入：" + userInput;
 ```
 
+服务端 4xx/5xx 抛 `AscApiException`（含业务错误码，如 `TASK_NOT_FOUND`）。
+
 ### MCP
 
-ASC 计划暴露为 MCP Server，任意支持 MCP 的 Agent 可按需拉取状态：
+任意支持 MCP 的客户端（Trae / Claude Desktop / 自研）按需拉取状态：
 
 ```json
 {
   "mcpServers": {
     "asc": {
-      "command": "npx",
-      "args": ["-y", "@asc/mcp-server"],
+      "command": "python",
+      "args": ["mcp/asc_mcp_server.py"],
       "env": { "ASC_BASE_URL": "http://localhost:8080" }
     }
   }
 }
 ```
 
-> MCP Server 状态见 [Roadmap](#roadmap)。
+依赖：`pip install "mcp>=2"`。提供 9 个工具：create_task / add_constraint / record_fact / record_todo / get_state_card / snapshot / restore_task / replay / handoff。
 
 ---
 
@@ -372,13 +380,14 @@ ASC 的目标不是“更花哨的上下文”，而是可验证的改善。评�
 
 - [x] 概念设计与架构定义
 - [x] State Contract 四类状态建模
-- [ ] Spring Boot 服务骨架 + REST API
-- [ ] 状态编译核心（约束识别 / 冲突消解 / TTL / 预算裁剪）
-- [ ] PostgreSQL + Redis 持久化
-- [ ] 任务快照 / 恢复 / 回放
-- [ ] LangGraph / CrewAI HTTP 适配示例
-- [ ] Spring AI / LangChain4j 适配示例
-- [ ] MCP Server
+- [x] Spring Boot 服务骨架 + REST API
+- [x] 状态编译核心（约束识别 / 冲突消解 / TTL / 预算裁剪）
+- [x] PostgreSQL + Redis 持久化
+- [x] 任务快照 / 恢复 / 回放
+- [x] 多 Agent 状态交接
+- [x] LangGraph / CrewAI HTTP 适配示例（[examples/](examples/)）
+- [x] Spring AI / LangChain4j 适配示例（Java SDK `io.asc.client`）
+- [x] MCP Server（[mcp/asc_mcp_server.py](mcp/asc_mcp_server.py)）
 - [ ] 可视化调试面板
 - [ ] 评测数据集与脚本
 
@@ -388,25 +397,25 @@ ASC 的目标不是“更花哨的上下文”，而是可验证的改善。评�
 
 ## Roadmap
 
-### v0.1 — 核心服务（MVP）
+### v0.1 — 核心服务（MVP）✅
 
 - REST API：任务、约束、事件、状态卡
 - 最简编译器：硬约束保留、事实覆盖、待办过滤、预算截断
 - PostgreSQL 持久化 + 版本号
 - Docker Compose 一键启动
 
-### v0.2 — 治理能力
+### v0.2 — 治理能力 ✅
 
 - 任务快照与跨会话恢复
 - 多 Agent 状态交接
 - 版本回放与审计 API
 - Redis 热状态与 TTL
 
-### v0.3 — 生态接入
+### v0.3 — 生态接入 ✅
 
-- LangGraph / CrewAI 示例与 Python SDK
-- Spring AI / LangChain4j Starter
-- MCP Server
+- LangGraph / CrewAI 示例与 Python SDK（[sdk/python](sdk/python/)）
+- Spring AI / LangChain4j Starter（Java SDK `io.asc.client`）
+- MCP Server（[mcp/asc_mcp_server.py](mcp/asc_mcp_server.py)）
 
 ### v0.4 — 可观测与评测
 
