@@ -53,7 +53,7 @@ class ArchitectureTest {
      * <p>core 只负责编译和治理逻辑，持久化和 HTTP 是外层的事。
      * core 通过接口（spi 包）访问存储，由 storage 实现，而不是直接 import JPA Repository。
      */
-    //@Test
+    @Test
     void core_should_not_depend_on_web_or_storage() {
         ArchRule rule = noClasses()
                 .that().resideInAPackage("io.asc.core..")
