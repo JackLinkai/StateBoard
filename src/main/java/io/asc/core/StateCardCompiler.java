@@ -181,6 +181,27 @@ public class StateCardCompiler {
                 estimated, card.compiledAt());
     }
 
+    /**
+     * 按受众视图裁格子（v0.6 权限视图）：view 决定"哪些格子可被这个受众看到"，
+     * 与 trim（budget，容量维度）互补——先 view 裁格、再 budget 裁条数。
+     * null / FULL 原样返回；返回新卡，入参不变。
+     */
+    public StateCard withView(StateCard card, io.asc.domain.CardView view) {
+        if (view == null || view == io.asc.domain.CardView.FULL) {
+            return card;
+        }
+        List<Constraint> hard = view == io.asc.domain.CardView.LEAN ? card.hardConstraints() : List.of();
+        List<Constraint> soft = view == io.asc.domain.CardView.AUDIT ? card.softConstraints() : List.of();
+        List<Fact> facts = view == io.asc.domain.CardView.LEAN ? card.verifiedFacts() : List.of();
+        List<Todo> todos = view == io.asc.domain.CardView.LEAN ? card.openTodos() : List.of();
+        List<InvalidatedItem> invalidated = view == io.asc.domain.CardView.AUDIT
+                ? card.invalidated() : List.of();
+
+        int estimated = estimateTokens(hard, soft, facts, todos, invalidated);
+        return new StateCard(card.taskId(), card.version(), hard, soft, facts, todos,
+                invalidated, estimated, card.compiledAt());
+    }
+
     /* ---------- 内部步骤 ---------- */
 
     /** 卡的估算 token：保留项逐条求和，空卡至少 1。与 {@link #tokensOf} 同一套规则，trim 的算术才自洽。 */

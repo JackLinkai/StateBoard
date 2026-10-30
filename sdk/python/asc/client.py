@@ -51,13 +51,17 @@ class AscClient:
     :param base_url: 服务地址，默认 http://localhost:8080
     :param timeout: 单请求超时秒数
     :param session: 可注入自定义 requests.Session（测试用），默认新建
+    :param tenant: 租户标识（v0.6 多租户）。非空时每个请求自动携带
+        ``X-ASC-Tenant`` 头；None 走服务端缺省租户 ``default``
     """
 
     def __init__(self, base_url: str = "http://localhost:8080",
-                 timeout: float = 5.0, session: Optional[Any] = None):
+                 timeout: float = 5.0, session: Optional[Any] = None,
+                 tenant: Optional[str] = None):
         self._base_url = base_url.rstrip("/")
         self._timeout = timeout
         self._session = session if session is not None else requests.Session()
+        self._tenant = (tenant or "").strip() or None
 
     # ---------- 任务与写入 ----------
 
@@ -114,14 +118,17 @@ class AscClient:
 
     # ---------- 读取与治理 ----------
 
-    def get_state_card(self, task_id: str, budget: Optional[str] = None) -> dict:
+    def get_state_card(self, task_id: str, budget: Optional[str] = None,
+                       view: Optional[str] = None) -> dict:
         """拿状态卡（Agent 每轮决策前调用）。
 
         :param budget: small / medium / large（大小写不敏感），None 用服务端默认
+        :param view: full / lean / audit（大小写不敏感），权限视图——
+            lean 只给执行态三格，audit 只给冲突/软约束两格，None 为 full
         :return: 状态卡 dict（taskId/version/hardConstraints/.../estimatedTokens）
         """
         return self._request("GET", f"/v1/tasks/{task_id}/state-card",
-                             params={"budget": budget})
+                             params={"budget": budget, "view": view})
 
     def snapshot(self, task_id: str) -> dict:
         """结束任务并生成快照，任务转为 SNAPSHOTTED，返回固化的全量卡。"""
@@ -142,9 +149,10 @@ class AscClient:
     def _request(self, method: str, path: str,
                  json_body: Optional[dict] = None,
                  params: Optional[dict] = None) -> Optional[dict]:
+        headers = {"X-ASC-Tenant": self._tenant} if self._tenant else None
         resp = self._session.request(
             method, self._base_url + path,
-            json=json_body, params=params, timeout=self._timeout)
+            json=json_body, params=params, headers=headers, timeout=self._timeout)
         if resp.status_code >= 400:
             raise self._error(resp)
         if resp.status_code == 204 or not resp.content:

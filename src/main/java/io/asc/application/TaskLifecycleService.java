@@ -63,18 +63,17 @@ public class TaskLifecycleService {
      * 结束任务并生成快照：编译全量卡落库，任务转为 SNAPSHOTTED。
      *
      * @return 固化下来的全量状态卡
-     * @throws TaskNotFoundException 任务不存在时
+     * @throws TaskNotFoundException 任务不存在或不属于该租户时
      */
     @Transactional
-    public StateCard snapshot(String taskId) {
-        Task task = taskStore.findById(taskId)
-                .orElseThrow(() -> new TaskNotFoundException(taskId));
+    public StateCard snapshot(String taskId, String tenantId) {
+        Task task = requireTask(taskId, tenantId);
         Instant now = Instant.now();
         StateCard card = compiler.compile(taskId, stateItemStore.findByTaskId(taskId), now);
         stateCardVersionStore.save(card);
         taskStore.save(new Task(task.taskId(), task.description(),
                 Task.TaskStatus.SNAPSHOTTED, task.createdAt(), now, task.version(),
-                task.ownerAgent(), task.handoffCount()));
+                task.ownerAgent(), task.handoffCount(), task.tenantId()));
         return card;
     }
 
@@ -84,64 +83,66 @@ public class TaskLifecycleService {
      * 回放 / 审计不受影响。
      *
      * @return 关闭后的任务
-     * @throws TaskNotFoundException 任务不存在时
+     * @throws TaskNotFoundException 任务不存在或不属于该租户时
      */
     @Transactional
-    public Task close(String taskId) {
-        Task task = taskStore.findById(taskId)
-                .orElseThrow(() -> new TaskNotFoundException(taskId));
+    public Task close(String taskId, String tenantId) {
+        Task task = requireTask(taskId, tenantId);
         if (task.status() == Task.TaskStatus.CLOSED) {
             return task;
         }
         return taskStore.save(new Task(task.taskId(), task.description(),
                 Task.TaskStatus.CLOSED, task.createdAt(), Instant.now(), task.version(),
-                task.ownerAgent(), task.handoffCount()));
+                task.ownerAgent(), task.handoffCount(), task.tenantId()));
     }
 
     /**
      * 按源任务的当前有效状态创建新任务（跨会话恢复）。
+     * 新任务继承源任务的租户。
      *
      * @param newTaskId   新任务 ID，必须未被占用
-     * @param restoreFrom 源任务 ID，必须已存在
+     * @param restoreFrom 源任务 ID，必须已存在且属于该租户
      * @param description 新任务描述，空则缺省为 "从 {restoreFrom} 恢复"
      * @return 新任务（此时活状态已复制完成）
-     * @throws TaskNotFoundException      源任务不存在时
+     * @throws TaskNotFoundException      源任务不存在或不属于该租户时
      * @throws TaskAlreadyExistsException 新任务 ID 已被占用时
      */
     @Transactional
-    public Task restore(String newTaskId, String restoreFrom, String description) {
-        taskStore.findById(restoreFrom)
-                .orElseThrow(() -> new TaskNotFoundException(restoreFrom));
-        if (taskStore.findById(newTaskId).isPresent()) {
-            throw new TaskAlreadyExistsException(newTaskId);
-        }
+    public Task restore(String newTaskId, String restoreFrom, String description, String tenantId) {
+        String tenant = Task.normalizeTenant(tenantId);
+        String sourceTenant = requireTask(restoreFrom, tenant).tenantId();
+        taskStore.findById(newTaskId)
+                .filter(existing -> existing.tenantId().equals(tenant))
+                .ifPresent(existing -> {
+                    throw new TaskAlreadyExistsException(newTaskId);
+                });
 
         Task created = taskApplicationService.createTask(newTaskId,
                 description != null && !description.isBlank()
                         ? description
-                        : "从 " + restoreFrom + " 恢复");
+                        : "从 " + restoreFrom + " 恢复",
+                sourceTenant);
 
         StateCard live = compiler.compile(restoreFrom,
                 stateItemStore.findByTaskId(restoreFrom), Instant.now());
-        live.hardConstraints().forEach(c -> copyItem(newTaskId, c));
-        live.softConstraints().forEach(c -> copyItem(newTaskId, c));
-        live.verifiedFacts().forEach(c -> copyItem(newTaskId, c));
-        live.openTodos().forEach(c -> copyItem(newTaskId, c));
+        live.hardConstraints().forEach(c -> copyItem(newTaskId, c, tenant));
+        live.softConstraints().forEach(c -> copyItem(newTaskId, c, tenant));
+        live.verifiedFacts().forEach(c -> copyItem(newTaskId, c, tenant));
+        live.openTodos().forEach(c -> copyItem(newTaskId, c, tenant));
 
-        return taskStore.findById(newTaskId).orElse(created);
+        return taskStore.findByIdInTenant(newTaskId, tenant).orElse(created);
     }
 
     /**
      * 版本回放：取历史上某一刻持久化的状态卡。
      *
      * @param version 目标版本；null 取最新持久化的一版
-     * @throws TaskNotFoundException      任务不存在时
+     * @throws TaskNotFoundException      任务不存在或不属于该租户时
      * @throws CardNotFoundException 该版本从未持久化过时
      */
     @Transactional(readOnly = true)
-    public StateCard replay(String taskId, Long version) {
-        taskStore.findById(taskId)
-                .orElseThrow(() -> new TaskNotFoundException(taskId));
+    public StateCard replay(String taskId, String tenantId, Long version) {
+        requireTask(taskId, tenantId);
         Optional<StateCard> card = version != null
                 ? stateCardVersionStore.find(taskId, version)
                 : stateCardVersionStore.findLatest(taskId);
@@ -157,20 +158,19 @@ public class TaskLifecycleService {
      *
      * @param toAgent 接手方 Agent 标识，必填
      * @return 交接时刻的全量状态卡，给接手方直接注入上下文
-     * @throws TaskNotFoundException    任务不存在时
+     * @throws TaskNotFoundException    任务不存在或不属于该租户时
      * @throws IllegalArgumentException toAgent 为空时
      */
     @Transactional
-    public StateCard handoff(String taskId, String toAgent) {
+    public StateCard handoff(String taskId, String tenantId, String toAgent) {
         if (toAgent == null || toAgent.isBlank()) {
             throw new IllegalArgumentException("toAgent must not be blank");
         }
-        Task task = taskStore.findById(taskId)
-                .orElseThrow(() -> new TaskNotFoundException(taskId));
+        Task task = requireTask(taskId, tenantId);
         Instant now = Instant.now();
         taskStore.save(new Task(task.taskId(), task.description(), task.status(),
                 task.createdAt(), now, task.version(), toAgent.trim(),
-                task.handoffCount() + 1));
+                task.handoffCount() + 1, task.tenantId()));
 
         StateCard card = compiler.compile(taskId, stateItemStore.findByTaskId(taskId), now);
         stateCardVersionStore.save(card);
@@ -180,12 +180,11 @@ public class TaskLifecycleService {
     /**
      * 列出某任务全部已持久化的版本摘要（版本号升序），回放面板 / 审计用。
      *
-     * @throws TaskNotFoundException 任务不存在时
+     * @throws TaskNotFoundException 任务不存在或不属于该租户时
      */
     @Transactional(readOnly = true)
-    public List<CardVersionSummary> listVersions(String taskId) {
-        taskStore.findById(taskId)
-                .orElseThrow(() -> new TaskNotFoundException(taskId));
+    public List<CardVersionSummary> listVersions(String taskId, String tenantId) {
+        requireTask(taskId, tenantId);
         return stateCardVersionStore.listVersions(taskId);
     }
 
@@ -194,20 +193,26 @@ public class TaskLifecycleService {
      * createdAt / source 保留（溯源"这条信息是什么时候、谁带来的"），
      * version 由 recordEvent 按新任务的版本序列重新分配。
      */
-    private void copyItem(String newTaskId, StateItem item) {
+    private void copyItem(String newTaskId, StateItem item, String tenantId) {
         switch (item) {
             case Constraint c -> taskApplicationService.recordEvent(newTaskId,
                     new Constraint(null, newTaskId, c.text(), c.level(),
-                            c.createdAt(), c.source(), 0));
+                            c.createdAt(), c.source(), 0), tenantId);
             case Fact f -> taskApplicationService.recordEvent(newTaskId,
                     new Fact(null, newTaskId, f.key(), f.value(),
-                            f.createdAt(), f.expiresAt(), f.source(), 0));
+                            f.createdAt(), f.expiresAt(), f.source(), 0), tenantId);
             case Todo t -> taskApplicationService.recordEvent(newTaskId,
                     new Todo(null, newTaskId, t.text(), Todo.TodoStatus.OPEN,
-                            t.createdAt(), t.source(), 0));
+                            t.createdAt(), t.source(), 0), tenantId);
             case InvalidatedItem i -> {
                 // 失效历史不跨会话携带：它描述的是旧会话内部的冲突演变
             }
         }
+    }
+
+    /** 查任务并校验租户（与 TaskApplicationServiceImpl 同一语义：不匹配即不存在）。 */
+    private Task requireTask(String taskId, String tenantId) {
+        return taskStore.findByIdInTenant(taskId, Task.normalizeTenant(tenantId))
+                .orElseThrow(() -> new TaskNotFoundException(taskId));
     }
 }

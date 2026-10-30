@@ -6,6 +6,7 @@ import io.asc.application.TaskAlreadyExistsException;
 import io.asc.application.TaskLifecycleService;
 import io.asc.application.TaskNotFoundException;
 import io.asc.domain.Budget;
+import io.asc.domain.CardView;
 import io.asc.domain.Constraint;
 import io.asc.domain.StateCard;
 import io.asc.domain.Task;
@@ -36,8 +37,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * web 层切片测试：只装配 TaskController + 全局异常处理，service 用 Mockito 替身。
  *
- * <p>验证 HTTP 契约：状态码（201/200/400/404）、错误码结构、
- * DTO 校验、默认值透传。业务编排逻辑由 application 层单测覆盖。
+ * <p>验证 HTTP 契约：状态码（201/200/400/404/409）、错误码结构、
+ * DTO 校验、默认值透传、租户头（X-ASC-Tenant）解析、view 参数解析。
+ * 业务编排逻辑由 application 层单测覆盖。
  */
 @WebMvcTest(TaskController.class)
 class TaskControllerTest {
@@ -54,9 +56,9 @@ class TaskControllerTest {
     private static final Instant NOW = Instant.parse("2026-10-29T10:00:00Z");
 
     @Test
-    @DisplayName("POST /v1/tasks：201，返回 domain Task 的 JSON")
+    @DisplayName("POST /v1/tasks：201，无租户头时 tenant=null 透传（服务端归缺省租户）")
     void create_task_returns_201() throws Exception {
-        when(service.createTask("task-1", "check sales")).thenReturn(
+        when(service.createTask(eq("task-1"), eq("check sales"), isNull())).thenReturn(
                 new Task("task-1", "check sales", Task.TaskStatus.ACTIVE, NOW, NOW, 0));
 
         mockMvc.perform(post("/v1/tasks")
@@ -69,6 +71,20 @@ class TaskControllerTest {
     }
 
     @Test
+    @DisplayName("POST /v1/tasks：带 X-ASC-Tenant 头时透传给 service")
+    void create_task_with_tenant_header() throws Exception {
+        when(service.createTask(eq("task-1"), eq("check sales"), eq("tenant-a"))).thenReturn(
+                new Task("task-1", "check sales", Task.TaskStatus.ACTIVE, NOW, NOW, 0, "tenant-a"));
+
+        mockMvc.perform(post("/v1/tasks")
+                        .header("X-ASC-Tenant", "tenant-a")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"taskId\":\"task-1\",\"description\":\"check sales\"}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.tenantId").value("tenant-a"));
+    }
+
+    @Test
     @DisplayName("POST /{id}/constraints：201，level 传 HARD 透传给 service")
     void add_constraint_returns_201() throws Exception {
         mockMvc.perform(post("/v1/tasks/task-1/constraints")
@@ -76,7 +92,7 @@ class TaskControllerTest {
                         .content("{\"text\":\"only last 30 days\",\"level\":\"HARD\"}"))
                 .andExpect(status().isCreated());
 
-        verify(service).addConstraint(eq("task-1"), eq("only last 30 days"),
+        verify(service).addConstraint(eq("task-1"), isNull(), eq("only last 30 days"),
                 eq(Constraint.ConstraintLevel.HARD));
     }
 
@@ -104,7 +120,8 @@ class TaskControllerTest {
     @DisplayName("任务不存在 → 404 TASK_NOT_FOUND")
     void missing_task_returns_404() throws Exception {
         Mockito.doThrow(new TaskNotFoundException("task-x"))
-                .when(service).addConstraint(eq("task-x"), eq("t"), eq(Constraint.ConstraintLevel.HARD));
+                .when(service).addConstraint(eq("task-x"), isNull(), eq("t"),
+                        eq(Constraint.ConstraintLevel.HARD));
 
         mockMvc.perform(post("/v1/tasks/task-x/constraints")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -121,7 +138,7 @@ class TaskControllerTest {
                         .content("{\"key\":\"k\",\"value\":\"v\"}"))
                 .andExpect(status().isCreated());
 
-        verify(service).recordFact(eq("task-1"), eq("k"), eq("v"), isNull(), eq("tool"));
+        verify(service).recordFact(eq("task-1"), isNull(), eq("k"), eq("v"), isNull(), eq("tool"));
     }
 
     @Test
@@ -142,14 +159,15 @@ class TaskControllerTest {
                         .content("{\"text\":\"hangzhou pending\"}"))
                 .andExpect(status().isCreated());
 
-        verify(service).recordTodo(eq("task-1"), eq("hangzhou pending"), eq("user"));
+        verify(service).recordTodo(eq("task-1"), isNull(), eq("hangzhou pending"), eq("user"));
     }
 
     @Test
     @DisplayName("GET /{id}/state-card：200，返回状态卡 JSON")
     void get_state_card_returns_200() throws Exception {
-        when(service.getStateCard(eq("task-1"), isNull())).thenReturn(new StateCard(
-                "task-1", 7, List.of(), List.of(), List.of(), List.of(), List.of(), 10, NOW));
+        when(service.getStateCard(eq("task-1"), isNull(), isNull(), isNull()))
+                .thenReturn(new StateCard(
+                        "task-1", 7, List.of(), List.of(), List.of(), List.of(), List.of(), 10, NOW));
 
         mockMvc.perform(get("/v1/tasks/task-1/state-card"))
                 .andExpect(status().isOk())
@@ -160,12 +178,14 @@ class TaskControllerTest {
     }
 
     @Test
-    @DisplayName("GET /{id}/state-card?budget=small：档位解析为 Budget.SMALL 透传")
-    void get_state_card_with_budget() throws Exception {
-        when(service.getStateCard(eq("task-1"), eq(Budget.SMALL))).thenReturn(new StateCard(
-                "task-1", 7, List.of(), List.of(), List.of(), List.of(), List.of(), 10, NOW));
+    @DisplayName("GET /{id}/state-card?budget=small&view=lean：档位与视图都解析透传")
+    void get_state_card_with_budget_and_view() throws Exception {
+        when(service.getStateCard(eq("task-1"), isNull(), eq(Budget.SMALL), eq(CardView.LEAN)))
+                .thenReturn(new StateCard(
+                        "task-1", 7, List.of(), List.of(), List.of(), List.of(), List.of(), 10, NOW));
 
-        mockMvc.perform(get("/v1/tasks/task-1/state-card").param("budget", "small"))
+        mockMvc.perform(get("/v1/tasks/task-1/state-card")
+                                .param("budget", "small").param("view", "LEAN"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.taskId").value("task-1"));
     }
@@ -178,12 +198,20 @@ class TaskControllerTest {
                 .andExpect(jsonPath("$.code").value("INVALID_ARGUMENT"));
     }
 
+    @Test
+    @DisplayName("GET /{id}/state-card?view=wrong：非法视图 → 400 INVALID_ARGUMENT")
+    void get_state_card_with_unknown_view_returns_400() throws Exception {
+        mockMvc.perform(get("/v1/tasks/task-1/state-card").param("view", "wrong"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_ARGUMENT"));
+    }
+
     /* ---------- 生命周期：快照 / 恢复 / 回放 ---------- */
 
     @Test
     @DisplayName("POST /{id}/snapshot：200，返回固化的全量卡")
     void snapshot_returns_200_with_card() throws Exception {
-        when(lifecycleService.snapshot("task-1")).thenReturn(new StateCard(
+        when(lifecycleService.snapshot("task-1", null)).thenReturn(new StateCard(
                 "task-1", 7, List.of(), List.of(), List.of(), List.of(), List.of(), 88, NOW));
 
         mockMvc.perform(post("/v1/tasks/task-1/snapshot"))
@@ -196,7 +224,7 @@ class TaskControllerTest {
     @Test
     @DisplayName("POST /{id}/snapshot：任务不存在 → 404 TASK_NOT_FOUND")
     void snapshot_missing_task_returns_404() throws Exception {
-        when(lifecycleService.snapshot("task-x")).thenThrow(new TaskNotFoundException("task-x"));
+        when(lifecycleService.snapshot("task-x", null)).thenThrow(new TaskNotFoundException("task-x"));
 
         mockMvc.perform(post("/v1/tasks/task-x/snapshot"))
                 .andExpect(status().isNotFound())
@@ -204,26 +232,27 @@ class TaskControllerTest {
     }
 
     @Test
-    @DisplayName("POST /v1/tasks 带 restoreFrom：201，走恢复用例并透传 description")
+    @DisplayName("POST /v1/tasks 带 restoreFrom：201，走恢复用例并透传 description 与租户")
     void create_with_restore_from_delegates_to_lifecycle() throws Exception {
-        when(lifecycleService.restore("task-2", "task-1", "新会话"))
+        when(lifecycleService.restore("task-2", "task-1", "新会话", "tenant-a"))
                 .thenReturn(new Task("task-2", "新会话", Task.TaskStatus.ACTIVE, NOW, NOW, 4));
 
         mockMvc.perform(post("/v1/tasks")
+                        .header("X-ASC-Tenant", "tenant-a")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"taskId\":\"task-2\",\"description\":\"新会话\",\"restoreFrom\":\"task-1\"}"))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.taskId").value("task-2"))
                 .andExpect(jsonPath("$.version").value(4));
 
-        verify(lifecycleService).restore("task-2", "task-1", "新会话");
-        verify(service, org.mockito.Mockito.never()).createTask(any(), any());
+        verify(lifecycleService).restore("task-2", "task-1", "新会话", "tenant-a");
+        verify(service, org.mockito.Mockito.never()).createTask(any(), any(), any());
     }
 
     @Test
     @DisplayName("GET /{id}/replay?version=5：200，返回历史卡")
     void replay_with_version_returns_200() throws Exception {
-        when(lifecycleService.replay("task-1", 5L)).thenReturn(new StateCard(
+        when(lifecycleService.replay("task-1", null, 5L)).thenReturn(new StateCard(
                 "task-1", 5, List.of(), List.of(), List.of(), List.of(), List.of(), 30, NOW));
 
         mockMvc.perform(get("/v1/tasks/task-1/replay").param("version", "5"))
@@ -235,7 +264,7 @@ class TaskControllerTest {
     @Test
     @DisplayName("GET /{id}/replay：该版本从未持久化 → 404 CARD_NOT_FOUND")
     void replay_unknown_version_returns_404() throws Exception {
-        when(lifecycleService.replay("task-1", 99L))
+        when(lifecycleService.replay("task-1", null, 99L))
                 .thenThrow(new CardNotFoundException("task-1", 99L));
 
         mockMvc.perform(get("/v1/tasks/task-1/replay").param("version", "99"))
@@ -246,7 +275,7 @@ class TaskControllerTest {
     @Test
     @DisplayName("POST /{id}/handoff：200，返回交接时刻的全量卡")
     void handoff_returns_200_with_card() throws Exception {
-        when(lifecycleService.handoff("task-1", "agent-b")).thenReturn(new StateCard(
+        when(lifecycleService.handoff("task-1", null, "agent-b")).thenReturn(new StateCard(
                 "task-1", 7, List.of(), List.of(), List.of(), List.of(), List.of(), 66, NOW));
 
         mockMvc.perform(post("/v1/tasks/task-1/handoff")
@@ -256,7 +285,7 @@ class TaskControllerTest {
                 .andExpect(jsonPath("$.taskId").value("task-1"))
                 .andExpect(jsonPath("$.estimatedTokens").value(66));
 
-        verify(lifecycleService).handoff("task-1", "agent-b");
+        verify(lifecycleService).handoff("task-1", null, "agent-b");
     }
 
     @Test
@@ -271,7 +300,7 @@ class TaskControllerTest {
     @Test
     @DisplayName("POST /v1/tasks 新 ID 与已有任务冲突 → 409 TASK_ALREADY_EXISTS")
     void restore_conflicting_task_id_returns_409() throws Exception {
-        when(lifecycleService.restore("task-1", "task-0", null))
+        when(lifecycleService.restore("task-1", "task-0", null, null))
                 .thenThrow(new TaskAlreadyExistsException("task-1"));
 
         mockMvc.perform(post("/v1/tasks")
@@ -284,9 +313,9 @@ class TaskControllerTest {
     /* ---------- v0.4 补齐：任务列表 / 待办流转 / 版本列表 ---------- */
 
     @Test
-    @DisplayName("GET /v1/tasks：200，返回任务列表")
+    @DisplayName("GET /v1/tasks：200，返回租户内任务列表")
     void list_tasks_returns_200() throws Exception {
-        when(service.listTasks()).thenReturn(List.of(
+        when(service.listTasks(isNull())).thenReturn(List.of(
                 new Task("task-2", "desc-2", Task.TaskStatus.ACTIVE, NOW, NOW, 4,
                         "agent-b", 1),
                 new Task("task-1", "desc-1", Task.TaskStatus.SNAPSHOTTED, NOW, NOW, 7)));
@@ -308,7 +337,7 @@ class TaskControllerTest {
                         .content("{\"status\":\"done\"}"))
                 .andExpect(status().isOk());
 
-        verify(service).updateTodoStatus("task-1", "t1", io.asc.domain.Todo.TodoStatus.DONE);
+        verify(service).updateTodoStatus("task-1", null, "t1", io.asc.domain.Todo.TodoStatus.DONE);
     }
 
     @Test
@@ -336,7 +365,7 @@ class TaskControllerTest {
     @Test
     @DisplayName("GET /{id}/versions：200，返回版本摘要列表")
     void list_versions_returns_200() throws Exception {
-        when(lifecycleService.listVersions("task-1")).thenReturn(List.of(
+        when(lifecycleService.listVersions("task-1", null)).thenReturn(List.of(
                 new io.asc.domain.CardVersionSummary("task-1", 3, 120, NOW),
                 new io.asc.domain.CardVersionSummary("task-1", 7, 210, NOW)));
 
@@ -350,7 +379,8 @@ class TaskControllerTest {
     @Test
     @DisplayName("GET /{id}/versions：任务不存在 → 404 TASK_NOT_FOUND")
     void list_versions_missing_task_returns_404() throws Exception {
-        when(lifecycleService.listVersions("task-x")).thenThrow(new TaskNotFoundException("task-x"));
+        when(lifecycleService.listVersions("task-x", null))
+                .thenThrow(new TaskNotFoundException("task-x"));
 
         mockMvc.perform(get("/v1/tasks/task-x/versions"))
                 .andExpect(status().isNotFound())
@@ -360,7 +390,7 @@ class TaskControllerTest {
     @Test
     @DisplayName("GET /{id}：200，返回任务详情")
     void get_task_returns_200() throws Exception {
-        when(service.getTask("task-1"))
+        when(service.getTask("task-1", null))
                 .thenReturn(new Task("task-1", "d", Task.TaskStatus.ACTIVE, NOW, NOW, 3));
 
         mockMvc.perform(get("/v1/tasks/task-1"))
@@ -372,7 +402,7 @@ class TaskControllerTest {
     @Test
     @DisplayName("GET /{id}：任务不存在 → 404 TASK_NOT_FOUND")
     void get_task_missing_returns_404() throws Exception {
-        when(service.getTask("task-x")).thenThrow(new TaskNotFoundException("task-x"));
+        when(service.getTask("task-x", null)).thenThrow(new TaskNotFoundException("task-x"));
 
         mockMvc.perform(get("/v1/tasks/task-x"))
                 .andExpect(status().isNotFound())
@@ -382,7 +412,7 @@ class TaskControllerTest {
     @Test
     @DisplayName("POST /{id}/close：200，返回已关闭的任务")
     void close_task_returns_200() throws Exception {
-        when(lifecycleService.close("task-1"))
+        when(lifecycleService.close("task-1", null))
                 .thenReturn(new Task("task-1", "d", Task.TaskStatus.CLOSED, NOW, NOW, 3));
 
         mockMvc.perform(post("/v1/tasks/task-1/close"))
@@ -393,7 +423,7 @@ class TaskControllerTest {
     @Test
     @DisplayName("POST /{id}/close：任务不存在 → 404 TASK_NOT_FOUND")
     void close_task_missing_returns_404() throws Exception {
-        when(lifecycleService.close("task-x")).thenThrow(new TaskNotFoundException("task-x"));
+        when(lifecycleService.close("task-x", null)).thenThrow(new TaskNotFoundException("task-x"));
 
         mockMvc.perform(post("/v1/tasks/task-x/close"))
                 .andExpect(status().isNotFound())
@@ -404,7 +434,8 @@ class TaskControllerTest {
     @DisplayName("POST /{id}/facts：REJECT 策略冲突 → 409 CONFLICT_DETECTED")
     void record_fact_conflict_returns_409() throws Exception {
         doThrow(new io.asc.core.conflict.ConflictDetectedException("task-1", "sales"))
-                .when(service).recordFact(eq("task-1"), eq("sales"), eq("120"), isNull(), anyString());
+                .when(service).recordFact(eq("task-1"), isNull(), eq("sales"), eq("120"),
+                        isNull(), anyString());
 
         mockMvc.perform(post("/v1/tasks/task-1/facts")
                         .contentType(MediaType.APPLICATION_JSON)

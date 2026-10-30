@@ -335,11 +335,11 @@ cd sdk/python && pip install .
 ```python
 from asc import AscClient
 
-asc = AscClient("http://localhost:8080")
+asc = AscClient("http://localhost:8080", tenant="team-a")   # 多租户：随请求走 X-ASC-Tenant 头
 asc.add_constraint("order-check-001", "只允许查询最近30天数据", level="HARD")
 
-# 每轮决策前
-card = asc.get_state_card("order-check-001", budget="small")
+# 每轮决策前（view="lean" 只注入执行态三格，省 token；缺省 full）
+card = asc.get_state_card("order-check-001", budget="small", view="lean")
 prompt = str(card) + "\n\n用户输入：" + user_input
 
 # 工具返回后（同 key 自动 LATEST_WINS 冲突消解）
@@ -353,10 +353,10 @@ asc.record_fact("order-check-001", "shanghai_sales", "120", source="tool:query_s
 Java SDK 在 `io.asc.client` 包内（服务同仓库直接可用）：
 
 ```java
-AscClient asc = AscHttpClient.create("http://localhost:8080");
+AscClient asc = AscHttpClient.create("http://localhost:8080", "team-a"); // 多租户
 asc.recordFact(taskId, "shanghai_sales", "120", null, "tool:query_sales");
 
-StateCard card = asc.getStateCard("order-check-001", Budget.SMALL);
+StateCard card = asc.getStateCard("order-check-001", Budget.SMALL, CardView.LEAN);
 String prompt = card.toPrompt() + "\n\n用户输入：" + userInput;
 ```
 
@@ -372,7 +372,7 @@ String prompt = card.toPrompt() + "\n\n用户输入：" + userInput;
     "asc": {
       "command": "python",
       "args": ["mcp/asc_mcp_server.py"],
-      "env": { "ASC_BASE_URL": "http://localhost:8080" }
+      "env": { "ASC_BASE_URL": "http://localhost:8080", "ASC_TENANT": "team-a" }
     }
   }
 }
@@ -443,6 +443,7 @@ MockAgent 是确定性规则解析器（无 LLM），两组行为差异完全由
 - [x] 可视化调试面板（[dashboard/](dashboard/)，构建后随服务访问 `http://localhost:8080`）
 - [x] 评测数据集与脚本（[benchmarks/](benchmarks/)）
 - [x] 冲突消解策略插件化（LATEST_WINS / MANUAL / REJECT）
+- [x] 多租户隔离（`X-ASC-Tenant` 请求头）与状态卡权限视图（full / lean / audit）
 
 > 勾选状态请以实际仓库进度为准。详细设计见 [docs/architecture.md](docs/architecture.md)
 
@@ -485,11 +486,23 @@ MockAgent 是确定性规则解析器（无 LLM），两组行为差异完全由
   - `REJECT`：写入时就拒绝同 key 异值（409 `CONFLICT_DETECTED`），编译侧兜底拦截；
   - 扩展：实现 [FactConflictResolver](src/main/java/io/asc/core/conflict/FactConflictResolver.java) SPI + `@Component` 即注册新策略，编译器零改动。
 
+### v0.6 — 多租户与权限视图 ✅
+
+- **多租户隔离**：任务归属租户（Flyway V4 迁移），请求头 `X-ASC-Tenant` 声明身份，
+  缺省 `default`（存量调用方零改动）。跨租户读写一律 404（与任务不存在同响应，防探测）；
+  恢复的新任务继承源任务租户；REST / SDK / MCP / 面板全链路支持。
+- **状态卡权限视图**：`GET state-card?view=`——
+  - `full`（默认）：四格全量；
+  - `lean`：只留必须遵守 / 已确认事实 / 待办，给 token 敏感的执行型 Agent；
+  - `audit`：只留过期/冲突 / 软约束，给审计回看。
+  view 决定格子可见性（权限维度），budget 决定 token 上限（容量维度）：
+  先 view 裁格、再 budget 裁条，不可见的格子不占预算。
+
 ### 长期
 
-- 多租户与权限视图
 - 状态压缩的三级折叠（会话 → 任务 → 经验）
 - 跨任务经验复用
+- 租户级正式鉴权（当前以 `X-ASC-Tenant` 头做数据隔离，非身份认证）
 
 ---
 

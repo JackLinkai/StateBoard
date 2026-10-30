@@ -293,4 +293,80 @@ class StateCardCompilerTest {
         assertThat(trimmed.hardConstraints()).hasSize(1);
         assertThat(trimmed.estimatedTokens()).isEqualTo(card.estimatedTokens());
     }
+
+    /* ---------- withView：v0.6 权限视图 ---------- */
+
+    @Test
+    @DisplayName("withView：FULL 与 null 原样返回同一实例")
+    void view_full_returns_same_card() {
+        List<StateItem> items = List.of(
+                new Constraint("c1", TASK, "硬约束", Constraint.ConstraintLevel.HARD, NOW, "user", 1),
+                new Constraint("c2", TASK, "软约束", Constraint.ConstraintLevel.SOFT, NOW, "user", 2),
+                factAt("f1", "k", "v", NOW),
+                new Todo("t1", TASK, "待办", Todo.TodoStatus.OPEN, NOW, "user", 3),
+                new InvalidatedItem("i1", TASK, "EXPIRED", null, NOW, "compiler", 4));
+        StateCard card = compiler.compile(TASK, items, NOW);
+
+        assertThat(compiler.withView(card, null)).isSameAs(card);
+        assertThat(compiler.withView(card, io.asc.domain.CardView.FULL)).isSameAs(card);
+    }
+
+    @Test
+    @DisplayName("withView：LEAN 只留硬约束 / 事实 / 待办，软约束与失效记录被裁掉")
+    void view_lean_keeps_execution_cells_only() {
+        List<StateItem> items = List.of(
+                new Constraint("c1", TASK, "硬约束", Constraint.ConstraintLevel.HARD, NOW, "user", 1),
+                new Constraint("c2", TASK, "软约束", Constraint.ConstraintLevel.SOFT, NOW, "user", 2),
+                factAt("f1", "k", "v", NOW),
+                new Todo("t1", TASK, "待办", Todo.TodoStatus.OPEN, NOW, "user", 3),
+                new InvalidatedItem("i1", TASK, "EXPIRED", null, NOW, "compiler", 4));
+        StateCard card = compiler.compile(TASK, items, NOW);
+
+        StateCard lean = compiler.withView(card, io.asc.domain.CardView.LEAN);
+
+        assertThat(lean.hardConstraints()).hasSize(1);
+        assertThat(lean.verifiedFacts()).hasSize(1);
+        assertThat(lean.openTodos()).hasSize(1);
+        assertThat(lean.softConstraints()).isEmpty();
+        assertThat(lean.invalidated()).isEmpty();
+        assertThat(lean.estimatedTokens()).isLessThan(card.estimatedTokens());
+        assertThat(lean.version()).isEqualTo(card.version());  // 版本号不变
+    }
+
+    @Test
+    @DisplayName("withView：AUDIT 只留软约束 / 失效记录，执行态被裁掉")
+    void view_audit_keeps_audit_cells_only() {
+        List<StateItem> items = List.of(
+                new Constraint("c1", TASK, "硬约束", Constraint.ConstraintLevel.HARD, NOW, "user", 1),
+                new Constraint("c2", TASK, "软约束", Constraint.ConstraintLevel.SOFT, NOW, "user", 2),
+                factAt("f1", "k", "v", NOW),
+                new Todo("t1", TASK, "待办", Todo.TodoStatus.OPEN, NOW, "user", 3),
+                new InvalidatedItem("i1", TASK, "EXPIRED", null, NOW, "compiler", 4));
+        StateCard card = compiler.compile(TASK, items, NOW);
+
+        StateCard audit = compiler.withView(card, io.asc.domain.CardView.AUDIT);
+
+        assertThat(audit.softConstraints()).hasSize(1);
+        assertThat(audit.invalidated()).hasSize(1);
+        assertThat(audit.hardConstraints()).isEmpty();
+        assertThat(audit.verifiedFacts()).isEmpty();
+        assertThat(audit.openTodos()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("view 先裁格、budget 再裁条：LEAN 后 token 已降，更紧的预算继续裁条数")
+    void view_then_trim_compose() {
+        List<StateItem> items = List.of(
+                new Constraint("c1", TASK, "硬约束", Constraint.ConstraintLevel.HARD, NOW, "user", 1),
+                factAt("f1", "key1", "v1", NOW),
+                factAt("f2", "key2", "v2", NOW),
+                factAt("f3", "key3", "v3", NOW));
+        StateCard card = compiler.compile(TASK, items, NOW);
+
+        StateCard lean = compiler.withView(card, io.asc.domain.CardView.LEAN);
+        StateCard finalCard = compiler.trim(lean, 4);
+
+        assertThat(finalCard.estimatedTokens()).isLessThanOrEqualTo(lean.estimatedTokens());
+        assertThat(finalCard.hardConstraints()).hasSize(1);  // 硬约束不被 budget 裁
+    }
 }

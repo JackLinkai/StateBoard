@@ -39,9 +39,25 @@ public class TaskStore {
         return jpaRepository.findById(taskId).map(taskConverter::toDomain);
     }
 
+    /**
+     * 按 taskId 取任务并校验租户：租户不匹配视为不存在（Optional.empty），
+     * 调用方统一抛 TaskNotFoundException——跨租户探测不泄露任务存在性。
+     */
+    public Optional<Task> findByIdInTenant(String taskId, String tenantId) {
+        return findById(taskId)
+                .filter(task -> task.tenantId().equals(tenantId));
+    }
+
     /** 全量任务列表，最近更新的排前面。 */
     public List<Task> findAll() {
         return jpaRepository.findAllByOrderByUpdatedAtDesc().stream()
+                .map(taskConverter::toDomain)
+                .toList();
+    }
+
+    /** 某租户的任务列表，最近更新的排前面（多租户隔离视角）。 */
+    public List<Task> findAllInTenant(String tenantId) {
+        return jpaRepository.findByTenantIdOrderByUpdatedAtDesc(tenantId).stream()
                 .map(taskConverter::toDomain)
                 .toList();
     }

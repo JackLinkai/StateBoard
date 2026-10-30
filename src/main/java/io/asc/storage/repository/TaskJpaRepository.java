@@ -15,4 +15,7 @@ public interface TaskJpaRepository extends JpaRepository<TaskEntity, String> {
 
     /** 全量任务列表，最近更新的排前面（面板 / 运维的默认视角）。 */
     List<TaskEntity> findAllByOrderByUpdatedAtDesc();
+
+    /** 某租户的任务列表，最近更新的排前面（多租户隔离视角）。 */
+    List<TaskEntity> findByTenantIdOrderByUpdatedAtDesc(String tenantId);
 }

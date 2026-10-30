@@ -34,7 +34,8 @@ from mcp.server.mcpserver import MCPServer  # noqa: E402
 from asc import AscClient  # noqa: E402
 
 mcp = MCPServer("asc")
-client = AscClient(os.environ.get("ASC_BASE_URL", "http://localhost:8080"))
+client = AscClient(os.environ.get("ASC_BASE_URL", "http://localhost:8080"),
+                   tenant=os.environ.get("ASC_TENANT") or None)
 
 
 @mcp.tool()
@@ -85,10 +86,12 @@ def close_task(task_id: str) -> str:
 
 
 @mcp.tool()
-def get_state_card(task_id: str, budget: str = "") -> dict:
+def get_state_card(task_id: str, budget: str = "", view: str = "") -> dict:
     """获取当前任务状态卡：必须遵守的约束 / 已确认事实 / 待办 / 已失效信息。
-    每轮决策前调用，基于状态卡行动。budget: small/medium/large，留空用默认。"""
-    return client.get_state_card(task_id, budget or None)
+    每轮决策前调用，基于状态卡行动。
+    budget: small/medium/large，留空用默认；
+    view: full/lean/audit 权限视图，lean 只注入执行态三格，audit 只看冲突与软约束，留空为 full。"""
+    return client.get_state_card(task_id, budget or None, view or None)
 
 
 @mcp.tool()

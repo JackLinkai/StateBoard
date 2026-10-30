@@ -14,6 +14,7 @@ function Quad({ title, cls, count, children }) {
 
 export default function TaskDetail({ taskId, onChanged }) {
   const [budget, setBudget] = useState('')
+  const [view, setView] = useState('')
   const [card, setCard] = useState(null)
   const [versions, setVersions] = useState([])
   const [replayed, setReplayed] = useState(null)   // 回放中的历史卡
@@ -26,7 +27,7 @@ export default function TaskDetail({ taskId, onChanged }) {
     try {
       setReplayed(null)
       const [c, vs] = await Promise.all([
-        api.getStateCard(taskId, budget || undefined),
+        api.getStateCard(taskId, budget || undefined, view || undefined),
         api.listVersions(taskId).catch(() => []),
       ])
       setCard(c)
@@ -35,7 +36,7 @@ export default function TaskDetail({ taskId, onChanged }) {
     } catch (e) {
       setError(e.message)
     }
-  }, [taskId, budget])
+  }, [taskId, budget, view])
 
   useEffect(() => { load() }, [load, onChanged])
   useEffect(() => {
@@ -76,6 +77,11 @@ export default function TaskDetail({ taskId, onChanged }) {
         <div className="actions">
           <select value={budget} onChange={(e) => { setBudget(e.target.value); setReplayed(null) }}>
             {BUDGETS.map((b) => <option key={b} value={b}>{b ? `预算 ${b}` : '默认预算'}</option>)}
+          </select>
+          <select value={view} onChange={(e) => { setView(e.target.value); setReplayed(null) }}>
+            <option value="">full 视图</option>
+            <option value="lean">lean（执行态）</option>
+            <option value="audit">audit（审计）</option>
           </select>
           <button className="ghost" onClick={() => act(() => api.snapshot(taskId), '快照已生成')}>快照</button>
           <button

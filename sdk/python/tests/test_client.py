@@ -29,9 +29,12 @@ class FakeSession:
         self.responses = list(responses)
         self.calls = []
 
-    def request(self, method, url, json=None, params=None, timeout=None):
-        self.calls.append({"method": method, "url": url, "json": json,
-                           "params": params, "timeout": timeout})
+    def request(self, method, url, json=None, params=None, headers=None, timeout=None):
+        call = {"method": method, "url": url, "json": json,
+                "params": params, "timeout": timeout}
+        if headers is not None:
+            call["headers"] = headers
+        self.calls.append(call)
         return self.responses.pop(0)
 
 
@@ -90,8 +93,36 @@ class AscClientTest(unittest.TestCase):
 
         self.assertEqual(self.session.calls[0]["url"],
                          "http://asc.test/v1/tasks/t1/state-card")
-        self.assertEqual(self.session.calls[0]["params"], {"budget": "SMALL"})
+        self.assertEqual(self.session.calls[0]["params"], {"budget": "SMALL", "view": None})
         self.assertEqual(card["version"], 7)
+
+    def test_get_state_card_view_param(self):
+        self.session.responses.append(FakeResponse(200, {"taskId": "t1", "version": 7}))
+
+        self.client.get_state_card("t1", budget="small", view="LEAN")
+
+        self.assertEqual(self.session.calls[0]["url"],
+                         "http://asc.test/v1/tasks/t1/state-card")
+        self.assertEqual(self.session.calls[0]["params"],
+                         {"budget": "small", "view": "LEAN"})
+
+    def test_tenant_header_sent_on_every_request(self):
+        session = FakeSession([FakeResponse(200, []), FakeResponse(200, {"taskId": "t1"})])
+        client = AscClient("http://asc.test", session=session, tenant="tenant-a")
+
+        client.list_tasks()
+        client.get_task("t1")
+
+        for call in session.calls:
+            self.assertEqual(call["headers"], {"X-ASC-Tenant": "tenant-a"})
+
+    def test_tenant_blank_falls_back_to_default(self):
+        session = FakeSession([FakeResponse(200, [])])
+        client = AscClient("http://asc.test", session=session, tenant="  ")
+
+        client.list_tasks()
+
+        self.assertNotIn("headers", session.calls[0])
 
     def test_replay_version_param_omitted_when_none(self):
         self.session.responses.append(FakeResponse(200, {"taskId": "t1", "version": 9}))

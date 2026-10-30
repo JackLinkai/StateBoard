@@ -1,6 +1,7 @@
 package io.asc.client;
 
 import io.asc.domain.Budget;
+import io.asc.domain.CardView;
 import io.asc.domain.StateCard;
 import io.asc.domain.Task;
 import org.springframework.core.ParameterizedTypeReference;
@@ -18,25 +19,40 @@ import java.util.List;
  *
  * <p>典型用法：
  * <pre>{@code
- * AscClient asc = AscHttpClient.create("http://localhost:8080");
+ * AscClient asc = AscHttpClient.create("http://localhost:8080", "tenant-a");
  * asc.addConstraint(taskId, "只允许查询最近30天数据", "HARD");
  * asc.recordFact(taskId, "shanghai_sales", "120", null, "tool:query_sales");
- * StateCard card = asc.getStateCard(taskId, Budget.SMALL);
+ * StateCard card = asc.getStateCard(taskId, Budget.SMALL, CardView.LEAN);
  * String prompt = card.toPrompt() + "\n\n用户输入：" + userInput;
  * }</pre>
  *
- * <p>服务端返回 4xx/5xx 时抛 {@link AscApiException}（含业务错误码）。
+ * <p>多租户（v0.6）：每个请求自动携带 {@code X-ASC-Tenant} 头；
+ * 单参 {@link #create(String)} 等价于缺省租户 {@code default}。
+ * 服务端返回 4xx/5xx 时抛 {@link AscApiException}（含业务错误码）。
  * 线程安全，可全局单例复用。
  */
 public final class AscHttpClient implements AscClient {
 
+    /** 服务端约定的租户请求头，见 TaskController.TENANT_HEADER。 */
+    static final String TENANT_HEADER = "X-ASC-Tenant";
+
     private final RestClient restClient;
     private final ObjectMapper objectMapper;
 
-    /** 工厂方法：指向 ASC 服务地址，如 http://localhost:8080。 */
+    /** 工厂方法：指向 ASC 服务地址，如 http://localhost:8080（缺省租户）。 */
     public static AscHttpClient create(String baseUrl) {
-        return new AscHttpClient(RestClient.builder().baseUrl(baseUrl),
-                new ObjectMapper());
+        return create(baseUrl, null);
+    }
+
+    /**
+     * 工厂方法：指定租户。tenant 为 null / 空白时走服务端缺省租户。
+     */
+    public static AscHttpClient create(String baseUrl, String tenant) {
+        RestClient.Builder builder = RestClient.builder().baseUrl(baseUrl);
+        String normalized = tenant == null || tenant.isBlank()
+                ? io.asc.domain.Task.DEFAULT_TENANT : tenant.trim();
+        builder.defaultHeader(TENANT_HEADER, normalized);
+        return new AscHttpClient(builder, new ObjectMapper());
     }
 
     /** 包内构造：测试注入 MockRestServiceServer 绑定的 builder。 */
@@ -111,12 +127,20 @@ public final class AscHttpClient implements AscClient {
 
     @Override
     public StateCard getStateCard(String taskId, Budget budget) {
+        return getStateCard(taskId, budget, null);
+    }
+
+    @Override
+    public StateCard getStateCard(String taskId, Budget budget, CardView view) {
         return restClient.get()
                 .uri(b -> {
                     org.springframework.web.util.UriBuilder ub =
                             b.path("/v1/tasks/{id}/state-card");
                     if (budget != null) {
                         ub = ub.queryParam("budget", budget.name().toLowerCase());
+                    }
+                    if (view != null) {
+                        ub = ub.queryParam("view", view.name().toLowerCase());
                     }
                     return ub.build(taskId);
                 })

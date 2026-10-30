@@ -4,6 +4,7 @@ import io.asc.core.conflict.ConflictDetectedException;
 import io.asc.core.conflict.ConflictStrategy;
 import io.asc.core.conflict.ConflictStrategyProperties;
 import io.asc.domain.Budget;
+import io.asc.domain.CardView;
 import io.asc.domain.Constraint;
 import io.asc.domain.Fact;
 import io.asc.domain.InvalidatedItem;
@@ -59,41 +60,45 @@ public class TaskApplicationServiceImpl implements TaskApplicationService {
 
     @Override
     @Transactional
-    public Task createTask(String taskId, String description) {
+    public Task createTask(String taskId, String description, String tenantId) {
         Instant now = Instant.now();
-        return taskStore.save(new Task(taskId, description, Task.TaskStatus.ACTIVE, now, now, 0));
+        return taskStore.save(new Task(taskId, description, Task.TaskStatus.ACTIVE,
+                now, now, 0, null, 0, Task.normalizeTenant(tenantId)));
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<Task> listTasks() {
-        return taskStore.findAll();
+    public List<Task> listTasks(String tenantId) {
+        return taskStore.findAllInTenant(Task.normalizeTenant(tenantId));
     }
 
     @Override
     @Transactional(readOnly = true)
-    public Task getTask(String taskId) {
-        return requireTask(taskId);
+    public Task getTask(String taskId, String tenantId) {
+        return requireTask(taskId, tenantId);
     }
 
     @Override
     @Transactional
-    public void addConstraint(String taskId, String text, Constraint.ConstraintLevel level) {
+    public void addConstraint(String taskId, String tenantId, String text,
+                              Constraint.ConstraintLevel level) {
         // 约束写入与普通事件是同一条编排流程，复用 recordEvent
         recordEvent(taskId, new Constraint(null, taskId, text,
                 level == null ? Constraint.ConstraintLevel.HARD : level,
-                null, "user", 0));
+                null, "user", 0), tenantId);
     }
 
     @Override
     @Transactional
-    public void recordFact(String taskId, String key, String value,
+    public void recordFact(String taskId, String tenantId, String key, String value,
                            Instant expiresAt, String source) {
+        // 租户校验先于冲突检查：跨租户探测得到 404 而不是 409
+        Task task = requireTask(taskId, tenantId);
         if (conflictProperties.get() == ConflictStrategy.REJECT) {
             rejectOnConflictingFact(taskId, key, value);
         }
-        recordEvent(taskId, new Fact(null, taskId, key, value, null, expiresAt,
-                sourceOrDefault(source, "tool"), 0));
+        recordEvent(task.taskId(), new Fact(null, taskId, key, value, null, expiresAt,
+                sourceOrDefault(source, "tool"), 0), tenantId);
     }
 
     /** REJECT 策略写入拦截：同 key 已有值不同的未过期事实 → 409；同值重写放行。 */
@@ -112,15 +117,15 @@ public class TaskApplicationServiceImpl implements TaskApplicationService {
 
     @Override
     @Transactional
-    public void recordTodo(String taskId, String text, String source) {
+    public void recordTodo(String taskId, String tenantId, String text, String source) {
         recordEvent(taskId, new Todo(null, taskId, text, Todo.TodoStatus.OPEN, null,
-                sourceOrDefault(source, "user"), 0));
+                sourceOrDefault(source, "user"), 0), tenantId);
     }
 
     @Override
     @Transactional
-    public void updateTodoStatus(String taskId, String todoId, Todo.TodoStatus status) {
-        Task task = requireTask(taskId);
+    public void updateTodoStatus(String taskId, String tenantId, String todoId, Todo.TodoStatus status) {
+        Task task = requireTask(taskId, tenantId);
         if (!(stateItemStore.findById(todoId).orElse(null) instanceof Todo todo)
                 || !todo.taskId().equals(taskId)) {
             throw new TaskNotFoundException(taskId);
@@ -130,33 +135,44 @@ public class TaskApplicationServiceImpl implements TaskApplicationService {
         stateItemStore.save(new Todo(todoId, taskId, todo.text(), status,
                 todo.createdAt(), todo.source(), newVersion));
         taskStore.save(new Task(taskId, task.description(), task.status(),
-                task.createdAt(), Instant.now(), newVersion));
+                task.createdAt(), Instant.now(), newVersion,
+                task.ownerAgent(), task.handoffCount(), task.tenantId()));
     }
 
     @Override
     @Transactional(readOnly = true)
-    public StateCard getStateCard(String taskId, Budget budget) {
-        return stateCardQueryService.getStateCard(taskId, budget);
+    public StateCard getStateCard(String taskId, String tenantId, Budget budget, CardView view) {
+        return stateCardQueryService.getStateCard(taskId, tenantId, budget, view);
     }
 
     @Override
     @Transactional
     public void recordEvent(String taskId, StateItem item) {
-        Task task = requireTask(taskId);
+        recordEvent(taskId, item, Task.DEFAULT_TENANT);
+    }
+
+    @Override
+    @Transactional
+    public void recordEvent(String taskId, StateItem item, String tenantId) {
+        Task task = requireTask(taskId, tenantId);
         long newVersion = task.version() + 1;
 
         StateItem normalized = normalize(item, taskId, newVersion);
 
         stateItemStore.save(normalized);
         taskStore.save(new Task(task.taskId(), task.description(), task.status(),
-                task.createdAt(), Instant.now(), newVersion));
+                task.createdAt(), Instant.now(), newVersion,
+                task.ownerAgent(), task.handoffCount(), task.tenantId()));
     }
 
     /* ---------- 内部步骤 ---------- */
 
-    /** 查任务，不存在抛 TaskNotFoundException。 */
-    private Task requireTask(String taskId) {
-        return taskStore.findById(taskId)
+    /**
+     * 查任务并校验租户：不存在<b>或租户不匹配</b>都抛 TaskNotFoundException——
+     * 跨租户探测与其他租户的任务得到同一个 404，不泄露存在性。
+     */
+    private Task requireTask(String taskId, String tenantId) {
+        return taskStore.findByIdInTenant(taskId, Task.normalizeTenant(tenantId))
                 .orElseThrow(() -> new TaskNotFoundException(taskId));
     }
 

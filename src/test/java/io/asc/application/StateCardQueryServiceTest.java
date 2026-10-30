@@ -58,6 +58,7 @@ class StateCardQueryServiceTest {
     private StateCardQueryService service;
 
     private static final Instant NOW = Instant.parse("2026-10-29T10:00:00Z");
+    private static final String DEFAULT = Task.DEFAULT_TENANT;
     private static final Task TASK = new Task("task-1", "d", Task.TaskStatus.ACTIVE, NOW, NOW, 3);
 
     @BeforeEach
@@ -70,29 +71,30 @@ class StateCardQueryServiceTest {
     @Test
     @DisplayName("任务不存在抛 TaskNotFoundException，零副作用")
     void missing_task_throws() {
-        when(taskStore.findById("no-such")).thenReturn(Optional.empty());
+        when(taskStore.findByIdInTenant("no-such", DEFAULT)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.getStateCard("no-such", null))
+        assertThatThrownBy(() -> service.getStateCard("no-such", DEFAULT, null, null))
                 .isInstanceOf(TaskNotFoundException.class);
 
         verifyNoInteractions(stateItemStore, compiler, stateCardVersionStore, hotStateCache);
     }
 
     @Test
-    @DisplayName("缓存未命中：查 DB → 回填缓存 → 编译 → 全量卡落库 → 按预算裁剪")
+    @DisplayName("缓存未命中：查 DB → 回填缓存 → 编译 → 全量卡落库 → 视图裁剪 → 按预算裁剪")
     void cache_miss_fetches_db_and_backfills() {
-        when(taskStore.findById("task-1")).thenReturn(Optional.of(TASK));
+        when(taskStore.findByIdInTenant("task-1", DEFAULT)).thenReturn(Optional.of(TASK));
         when(hotStateCache.get("task-1", 3)).thenReturn(Optional.empty());
         List<StateItem> items = List.of(new Fact("f1", "task-1", "k", "v", NOW, null, "tool", 1));
         when(stateItemStore.findByTaskId("task-1")).thenReturn(items);
         StateCard full = new StateCard("task-1", 3, List.of(), List.of(), List.of(),
                 List.of(), List.of(), 800, NOW);
         when(compiler.compile(eq("task-1"), eq(items), any())).thenReturn(full);
+        when(compiler.withView(full, null)).thenReturn(full);
         StateCard trimmed = new StateCard("task-1", 3, List.of(), List.of(), List.of(),
                 List.of(), List.of(), 300, NOW);
         when(compiler.trim(full, Budget.SMALL.tokens())).thenReturn(trimmed);
 
-        StateCard result = service.getStateCard("task-1", Budget.SMALL);
+        StateCard result = service.getStateCard("task-1", DEFAULT, Budget.SMALL, null);
 
         assertThat(result).isSameAs(trimmed);
         verify(hotStateCache).put("task-1", 3, items);
@@ -102,19 +104,31 @@ class StateCardQueryServiceTest {
     @Test
     @DisplayName("缓存命中：跳过 DB 查询，仍然编译（TTL 判定不失真）并落库")
     void cache_hit_skips_db_but_still_compiles() {
-        when(taskStore.findById("task-1")).thenReturn(Optional.of(TASK));
+        when(taskStore.findByIdInTenant("task-1", DEFAULT)).thenReturn(Optional.of(TASK));
         List<StateItem> cached = List.of(new Fact("f1", "task-1", "k", "v", NOW, null, "tool", 1));
         when(hotStateCache.get("task-1", 3)).thenReturn(Optional.of(cached));
         StateCard full = new StateCard("task-1", 3, List.of(), List.of(), List.of(),
                 List.of(), List.of(), 100, NOW);
         when(compiler.compile(eq("task-1"), eq(cached), any())).thenReturn(full);
+        when(compiler.withView(full, null)).thenReturn(full);
         when(compiler.trim(eq(full), anyInt())).thenReturn(full);
 
-        StateCard result = service.getStateCard("task-1", null);
+        StateCard result = service.getStateCard("task-1", DEFAULT, null, null);
 
         assertThat(result).isSameAs(full);
         verify(stateItemStore, never()).findByTaskId(any());
         verify(hotStateCache, never()).put(any(), org.mockito.ArgumentMatchers.anyLong(), anyList());
         verify(stateCardVersionStore).save(full);
+    }
+
+    @Test
+    @DisplayName("跨租户访问：按任务不存在处理，零副作用")
+    void cross_tenant_access_treated_as_missing() {
+        when(taskStore.findByIdInTenant("task-1", "tenant-b")).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.getStateCard("task-1", "tenant-b", null, null))
+                .isInstanceOf(TaskNotFoundException.class);
+
+        verifyNoInteractions(stateItemStore, compiler, stateCardVersionStore, hotStateCache);
     }
 }

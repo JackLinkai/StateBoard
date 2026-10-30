@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react'
-import { api } from './api.js'
+import { api, currentTenant, setTenant } from './api.js'
 import TaskDetail from './TaskDetail.jsx'
 
 const STATUS_LABEL = {
@@ -14,6 +14,7 @@ export default function App() {
   const [error, setError] = useState(null)
   const [form, setForm] = useState({ taskId: '', description: '', restoreFrom: '' })
   const [busy, setBusy] = useState(false)
+  const [tenant, setTenantState] = useState(currentTenant())
 
   const refresh = useCallback(async () => {
     try {
@@ -29,6 +30,13 @@ export default function App() {
     const timer = setInterval(refresh, 10000)
     return () => clearInterval(timer)
   }, [refresh])
+
+  function switchTenant(value) {
+    setTenant(value)
+    setTenantState(currentTenant())
+    setSelected(null)
+    refresh()
+  }
 
   async function createTask(e) {
     e.preventDefault()
@@ -52,6 +60,13 @@ export default function App() {
         <header className="brand">
           <h1>ASC StateBoard</h1>
           <p>Agent 状态治理面板</p>
+          <input
+            className="tenant-input"
+            placeholder="租户（X-ASC-Tenant）"
+            defaultValue={tenant}
+            onBlur={(e) => e.target.value !== tenant && switchTenant(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && e.target.blur()}
+          />
           <button className="ghost" onClick={refresh}>刷新</button>
         </header>
 

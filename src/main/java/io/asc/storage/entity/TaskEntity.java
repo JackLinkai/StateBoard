@@ -61,4 +61,8 @@ public class TaskEntity {
     /** 交接次数，每次 handoff +1。 */
     @Column(name = "handoff_count", nullable = false)
     private long handoffCount;
+
+    /** 任务归属租户，缺省 "default"，见 V4__task_tenant.sql。 */
+    @Column(name = "tenant_id", nullable = false)
+    private String tenantId;
 }

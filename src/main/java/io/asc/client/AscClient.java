@@ -1,6 +1,7 @@
 package io.asc.client;
 
 import io.asc.domain.Budget;
+import io.asc.domain.CardView;
 import io.asc.domain.StateCard;
 import io.asc.domain.Task;
 
@@ -38,6 +39,12 @@ public interface AscClient {
     void updateTodo(String taskId, String todoId, String status);
 
     StateCard getStateCard(String taskId, Budget budget);
+
+    /**
+     * 同 {@link #getStateCard(String, Budget)}，显式指定权限视图
+     * （full / lean / audit）：view 决定格子可见性，budget 决定 token 上限。
+     */
+    StateCard getStateCard(String taskId, Budget budget, CardView view);
 
     StateCard snapshot(String taskId);
 

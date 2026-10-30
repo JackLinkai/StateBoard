@@ -8,6 +8,7 @@ import java.time.Instant;
  * <p>所有状态、快照、事件都挂在 taskId 下。
  * status 用于控制“还能不能写状态”：
  * ACTIVE 可写，SNAPSHOTTED 可恢复但一般不继续写，CLOSED 已关闭。
+ * tenantId 标识任务归属的租户，实现数据隔离（v0.6）。
  */
 public record Task(
 
@@ -36,15 +37,54 @@ public record Task(
         String ownerAgent,
 
         /* 交接次数，每次 handoff +1。审计用：一个任务被来回交了几手。 */
-        long handoffCount
+        long handoffCount,
+
+        /* 任务归属租户。请求不带 X-ASC-Tenant 头时落 "default"；
+           跨租户读写一律按任务不存在处理（404），不泄露存在性。 */
+        String tenantId
 ) {
 
+    /** 缺省租户：不携带 X-ASC-Tenant 头的请求都落在它下面。 */
+    public static final String DEFAULT_TENANT = "default";
+
+    /** 租户归一化：null / 空白归缺省租户，其余去空白。入口层统一调用。 */
+    public static String normalizeTenant(String tenantId) {
+        return tenantId == null || tenantId.isBlank() ? DEFAULT_TENANT : tenantId.trim();
+    }
+
     /**
-     * 便捷构造：未经过交接的任务（ownerAgent=null、handoffCount=0）。
+     * 便捷构造：未经过交接、归属缺省租户的任务（ownerAgent=null、handoffCount=0）。
      */
     public Task(String taskId, String description, TaskStatus status,
                 Instant createdAt, Instant updatedAt, long version) {
-        this(taskId, description, status, createdAt, updatedAt, version, null, 0);
+        this(taskId, description, status, createdAt, updatedAt, version,
+                null, 0, DEFAULT_TENANT);
+    }
+
+    /**
+     * 便捷构造：未经过交接的任务（ownerAgent=null、handoffCount=0），指定租户。
+     */
+    public Task(String taskId, String description, TaskStatus status,
+                Instant createdAt, Instant updatedAt, long version, String tenantId) {
+        this(taskId, description, status, createdAt, updatedAt, version,
+                null, 0, tenantId);
+    }
+
+    /**
+     * 便捷构造：归属缺省租户、经过交接的任务（测试与内部组装用）。
+     */
+    public Task(String taskId, String description, TaskStatus status,
+                Instant createdAt, Instant updatedAt, long version,
+                String ownerAgent, long handoffCount) {
+        this(taskId, description, status, createdAt, updatedAt, version,
+                ownerAgent, handoffCount, DEFAULT_TENANT);
+    }
+
+    /** 归一化：null / 空白租户一律归到缺省租户。 */
+    public Task {
+        if (tenantId == null || tenantId.isBlank()) {
+            tenantId = DEFAULT_TENANT;
+        }
     }
 
     /**

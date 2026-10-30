@@ -24,7 +24,8 @@ public class TaskConverter {
                 task.updatedAt(),
                 task.version(),
                 task.ownerAgent(),
-                task.handoffCount()
+                task.handoffCount(),
+                task.tenantId()
         );
     }
 
@@ -38,7 +39,8 @@ public class TaskConverter {
                 entity.getUpdatedAt(),
                 entity.getVersion(),
                 entity.getOwnerAgent(),
-                entity.getHandoffCount()
+                entity.getHandoffCount(),
+                entity.getTenantId()
         );
     }
 }

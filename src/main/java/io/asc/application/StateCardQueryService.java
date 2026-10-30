@@ -2,8 +2,10 @@ package io.asc.application;
 
 import io.asc.core.StateCardCompiler;
 import io.asc.domain.Budget;
+import io.asc.domain.CardView;
 import io.asc.domain.StateCard;
 import io.asc.domain.StateItem;
+import io.asc.domain.Task;
 import io.asc.storage.HotStateCache;
 import io.asc.storage.StateCardVersionStore;
 import io.asc.storage.StateItemStore;
@@ -55,8 +57,9 @@ public class StateCardQueryService {
      * @throws TaskNotFoundException 任务不存在时
      */
     @Transactional
-    public StateCard getStateCard(String taskId, Budget budget) {
-        long version = taskStore.findById(taskId)
+    public StateCard getStateCard(String taskId, String tenantId, Budget budget, CardView view) {
+        long version = taskStore
+                .findByIdInTenant(taskId, Task.normalizeTenant(tenantId))
                 .orElseThrow(() -> new TaskNotFoundException(taskId))
                 .version();
 
@@ -70,7 +73,8 @@ public class StateCardQueryService {
         StateCard full = compiler.compile(taskId, items, Instant.now());
         stateCardVersionStore.save(full);
 
+        StateCard viewed = compiler.withView(full, view);
         int budgetTokens = budget != null ? budget.tokens() : defaultBudgetTokens;
-        return compiler.trim(full, budgetTokens);
+        return compiler.trim(viewed, budgetTokens);
     }
 }
