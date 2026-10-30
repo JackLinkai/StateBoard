@@ -3,12 +3,14 @@ package io.asc.client;
 import io.asc.domain.Budget;
 import io.asc.domain.StateCard;
 import io.asc.domain.Task;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.web.client.RestClient;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
+import java.util.List;
 
 /**
  * ASC Java SDK：对 REST API 的薄封装，给 Spring AI / LangChain4j 等
@@ -54,6 +56,30 @@ public final class AscHttpClient implements AscClient {
     @Override
     public Task restoreTask(String newTaskId, String restoreFrom, String description) {
         return post("/v1/tasks", new CreateTaskReq(newTaskId, description, restoreFrom), Task.class);
+    }
+
+    @Override
+    public List<Task> listTasks() {
+        return restClient.get()
+                .uri("/v1/tasks")
+                .retrieve()
+                .body(new ParameterizedTypeReference<List<Task>>() {});
+    }
+
+    @Override
+    public Task getTask(String taskId) {
+        return restClient.get()
+                .uri("/v1/tasks/{id}", taskId)
+                .retrieve()
+                .body(Task.class);
+    }
+
+    @Override
+    public Task closeTask(String taskId) {
+        return restClient.post()
+                .uri("/v1/tasks/{id}/close", taskId)
+                .retrieve()
+                .body(Task.class);
     }
 
     @Override

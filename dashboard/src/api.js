@@ -28,6 +28,7 @@ export const api = {
       body: JSON.stringify({ status }),
     }),
   snapshot: (taskId) => request(`/v1/tasks/${taskId}/snapshot`, { method: 'POST' }),
+  closeTask: (taskId) => request(`/v1/tasks/${taskId}/close`, { method: 'POST' }),
   handoff: (taskId, toAgent) =>
     request(`/v1/tasks/${taskId}/handoff`, { method: 'POST', body: JSON.stringify({ toAgent }) }),
   listVersions: (taskId) => request(`/v1/tasks/${taskId}/versions`),

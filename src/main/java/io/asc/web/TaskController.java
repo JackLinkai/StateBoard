@@ -45,6 +45,18 @@ public class TaskController {
         return service.listTasks();
     }
 
+    /** 取单个任务。 */
+    @GetMapping("/{taskId}")
+    public Task getTask(@PathVariable String taskId) {
+        return service.getTask(taskId);
+    }
+
+    /** 关闭任务（幂等）：置 CLOSED，快照与回放保留。 */
+    @PostMapping("/{taskId}/close")
+    public Task closeTask(@PathVariable String taskId) {
+        return lifecycleService.close(taskId);
+    }
+
     /** 创建任务；带 restoreFrom 时按源任务的当前有效状态恢复出新任务。 */
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)

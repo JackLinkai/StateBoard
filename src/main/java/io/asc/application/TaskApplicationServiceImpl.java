@@ -61,6 +61,12 @@ public class TaskApplicationServiceImpl implements TaskApplicationService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public Task getTask(String taskId) {
+        return requireTask(taskId);
+    }
+
+    @Override
     @Transactional
     public void addConstraint(String taskId, String text, Constraint.ConstraintLevel level) {
         // 约束写入与普通事件是同一条编排流程，复用 recordEvent

@@ -5,6 +5,7 @@ import io.asc.domain.StateCard;
 import io.asc.domain.Task;
 
 import java.time.Instant;
+import java.util.List;
 
 /**
  * ASC Java SDK 接口：见 {@link AscHttpClient}。
@@ -15,6 +16,15 @@ public interface AscClient {
     Task createTask(String taskId, String description);
 
     Task restoreTask(String newTaskId, String restoreFrom, String description);
+
+    /** 全量任务列表，最近更新的排前面。 */
+    List<Task> listTasks();
+
+    /** 取单个任务；任务不存在抛 AscApiException(TASK_NOT_FOUND)。 */
+    Task getTask(String taskId);
+
+    /** 关闭任务（幂等）：置 CLOSED，快照与回放保留。 */
+    Task closeTask(String taskId);
 
     /** level：HARD / SOFT，null 走服务端默认 HARD。 */
     void addConstraint(String taskId, String text, String level);

@@ -354,4 +354,47 @@ class TaskControllerTest {
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("TASK_NOT_FOUND"));
     }
+
+    @Test
+    @DisplayName("GET /{id}：200，返回任务详情")
+    void get_task_returns_200() throws Exception {
+        when(service.getTask("task-1"))
+                .thenReturn(new Task("task-1", "d", Task.TaskStatus.ACTIVE, NOW, NOW, 3));
+
+        mockMvc.perform(get("/v1/tasks/task-1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.taskId").value("task-1"))
+                .andExpect(jsonPath("$.version").value(3));
+    }
+
+    @Test
+    @DisplayName("GET /{id}：任务不存在 → 404 TASK_NOT_FOUND")
+    void get_task_missing_returns_404() throws Exception {
+        when(service.getTask("task-x")).thenThrow(new TaskNotFoundException("task-x"));
+
+        mockMvc.perform(get("/v1/tasks/task-x"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("TASK_NOT_FOUND"));
+    }
+
+    @Test
+    @DisplayName("POST /{id}/close：200，返回已关闭的任务")
+    void close_task_returns_200() throws Exception {
+        when(lifecycleService.close("task-1"))
+                .thenReturn(new Task("task-1", "d", Task.TaskStatus.CLOSED, NOW, NOW, 3));
+
+        mockMvc.perform(post("/v1/tasks/task-1/close"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("CLOSED"));
+    }
+
+    @Test
+    @DisplayName("POST /{id}/close：任务不存在 → 404 TASK_NOT_FOUND")
+    void close_task_missing_returns_404() throws Exception {
+        when(lifecycleService.close("task-x")).thenThrow(new TaskNotFoundException("task-x"));
+
+        mockMvc.perform(post("/v1/tasks/task-x/close"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("TASK_NOT_FOUND"));
+    }
 }

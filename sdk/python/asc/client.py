@@ -100,6 +100,14 @@ class AscClient:
         """全量任务列表，最近更新的排前面。"""
         return self._request("GET", "/v1/tasks")
 
+    def get_task(self, task_id: str) -> dict:
+        """取单个任务；任务不存在抛 AscError(TASK_NOT_FOUND)。"""
+        return self._request("GET", f"/v1/tasks/{task_id}")
+
+    def close_task(self, task_id: str) -> dict:
+        """关闭任务（幂等）：置 CLOSED，快照与回放保留。"""
+        return self._request("POST", f"/v1/tasks/{task_id}/close")
+
     def list_card_versions(self, task_id: str) -> list:
         """列出某任务全部已持久化的状态卡版本摘要（版本号升序）。"""
         return self._request("GET", f"/v1/tasks/{task_id}/versions")

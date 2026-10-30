@@ -78,6 +78,11 @@ export default function TaskDetail({ taskId, onChanged }) {
             {BUDGETS.map((b) => <option key={b} value={b}>{b ? `预算 ${b}` : '默认预算'}</option>)}
           </select>
           <button className="ghost" onClick={() => act(() => api.snapshot(taskId), '快照已生成')}>快照</button>
+          <button
+            className="ghost"
+            disabled={taskInfo?.status === 'CLOSED'}
+            onClick={() => act(() => api.closeTask(taskId), '任务已关闭')}
+          >关闭</button>
           <div className="handoff">
             <input
               placeholder="目标 Agent"

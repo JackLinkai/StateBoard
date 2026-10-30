@@ -40,6 +40,13 @@ public interface TaskApplicationService {
     List<Task> listTasks();
 
     /**
+     * 取单个任务。
+     *
+     * @throws TaskNotFoundException 任务不存在时
+     */
+    Task getTask(String taskId);
+
+    /**
      * 写入一条约束，level 为 null 时按 HARD 处理，source 缺省为 user。
      *
      * @throws TaskNotFoundException 任务不存在时

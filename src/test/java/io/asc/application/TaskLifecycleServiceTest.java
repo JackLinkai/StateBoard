@@ -104,6 +104,60 @@ class TaskLifecycleServiceTest {
     }
 
     @Test
+    @DisplayName("snapshot：交接过的任务快照后保留 ownerAgent 与 handoffCount（回归）")
+    void snapshot_keeps_owner_and_handoff_count() {
+        Task handed = new Task(SRC, "d", Task.TaskStatus.ACTIVE, T0, T0, 5, "agent-b", 2);
+        when(taskStore.findById(SRC)).thenReturn(Optional.of(handed));
+        when(stateItemStore.findByTaskId(SRC)).thenReturn(List.of());
+        when(compiler.compile(eq(SRC), eq(List.of()), any()))
+                .thenReturn(new StateCard(SRC, 5, List.of(), List.of(), List.of(),
+                        List.of(), List.of(), 10, T0));
+
+        service.snapshot(SRC);
+
+        ArgumentCaptor<Task> captor = ArgumentCaptor.forClass(Task.class);
+        verify(taskStore).save(captor.capture());
+        assertThat(captor.getValue().ownerAgent()).isEqualTo("agent-b");
+        assertThat(captor.getValue().handoffCount()).isEqualTo(2);
+    }
+
+    @Test
+    @DisplayName("close：置 CLOSED，version / owner 原样保留")
+    void close_marks_closed_and_keeps_owner() {
+        Task active = new Task(SRC, "d", Task.TaskStatus.ACTIVE, T0, T0, 5, "agent-b", 2);
+        when(taskStore.findById(SRC)).thenReturn(Optional.of(active));
+        when(taskStore.save(any(Task.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Task closed = service.close(SRC);
+
+        assertThat(closed.status()).isEqualTo(Task.TaskStatus.CLOSED);
+        assertThat(closed.version()).isEqualTo(5);
+        assertThat(closed.ownerAgent()).isEqualTo("agent-b");
+        assertThat(closed.handoffCount()).isEqualTo(2);
+    }
+
+    @Test
+    @DisplayName("close：已关闭的任务幂等返回，不再落库")
+    void close_is_idempotent() {
+        when(taskStore.findById(SRC))
+                .thenReturn(Optional.of(task(SRC, 5, Task.TaskStatus.CLOSED)));
+
+        Task closed = service.close(SRC);
+
+        assertThat(closed.status()).isEqualTo(Task.TaskStatus.CLOSED);
+        verify(taskStore, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("close：任务不存在抛 TaskNotFoundException")
+    void close_missing_task_throws() {
+        when(taskStore.findById("no-such")).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.close("no-such"))
+                .isInstanceOf(TaskNotFoundException.class);
+    }
+
+    @Test
     @DisplayName("restore：源任务不存在抛 TaskNotFoundException")
     void restore_missing_source_throws() {
         when(taskStore.findById("no-src")).thenReturn(Optional.empty());

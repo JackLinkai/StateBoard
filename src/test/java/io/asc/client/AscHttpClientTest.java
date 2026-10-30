@@ -126,6 +126,35 @@ class AscHttpClientTest {
     }
 
     @Test
+    @DisplayName("listTasks / getTask / closeTask：GET 列表与详情、POST 关闭")
+    void task_queries_and_close() {
+        server.expect(requestTo("http://asc.test/v1/tasks"))
+                .andExpect(method(HttpMethod.GET))
+                .andRespond(withSuccess(
+                        "[{\"taskId\":\"task-1\",\"status\":\"ACTIVE\",\"version\":1,"
+                                + "\"createdAt\":0,\"updatedAt\":0,\"handoffCount\":0}]",
+                        MediaType.APPLICATION_JSON));
+        server.expect(requestTo("http://asc.test/v1/tasks/task-1"))
+                .andExpect(method(HttpMethod.GET))
+                .andRespond(withSuccess(
+                        "{\"taskId\":\"task-1\",\"status\":\"ACTIVE\",\"version\":1,"
+                                + "\"createdAt\":0,\"updatedAt\":0,\"handoffCount\":0}",
+                        MediaType.APPLICATION_JSON));
+        server.expect(requestTo("http://asc.test/v1/tasks/task-1/close"))
+                .andExpect(method(HttpMethod.POST))
+                .andRespond(withSuccess(
+                        "{\"taskId\":\"task-1\",\"status\":\"CLOSED\",\"version\":1,"
+                                + "\"createdAt\":0,\"updatedAt\":0,\"handoffCount\":0}",
+                        MediaType.APPLICATION_JSON));
+
+        assertThat(client.listTasks()).hasSize(1);
+        assertThat(client.getTask("task-1").taskId()).isEqualTo("task-1");
+        assertThat(client.closeTask("task-1").status()).isEqualTo(Task.TaskStatus.CLOSED);
+
+        server.verify();
+    }
+
+    @Test
     @DisplayName("getStateCard：budget 档位转小写进 query 参数")
     void get_state_card() {
         server.expect(requestTo("http://asc.test/v1/tasks/task-1/state-card?budget=small"))

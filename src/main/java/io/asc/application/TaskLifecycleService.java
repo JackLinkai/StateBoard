@@ -73,8 +73,29 @@ public class TaskLifecycleService {
         StateCard card = compiler.compile(taskId, stateItemStore.findByTaskId(taskId), now);
         stateCardVersionStore.save(card);
         taskStore.save(new Task(task.taskId(), task.description(),
-                Task.TaskStatus.SNAPSHOTTED, task.createdAt(), now, task.version()));
+                Task.TaskStatus.SNAPSHOTTED, task.createdAt(), now, task.version(),
+                task.ownerAgent(), task.handoffCount()));
         return card;
+    }
+
+    /**
+     * 关闭任务：置为 CLOSED，此后不再作为活跃任务出现在面板默认视角里。
+     * 幂等：已关闭的任务重复关闭原样返回。已持久化的状态卡与快照保留，
+     * 回放 / 审计不受影响。
+     *
+     * @return 关闭后的任务
+     * @throws TaskNotFoundException 任务不存在时
+     */
+    @Transactional
+    public Task close(String taskId) {
+        Task task = taskStore.findById(taskId)
+                .orElseThrow(() -> new TaskNotFoundException(taskId));
+        if (task.status() == Task.TaskStatus.CLOSED) {
+            return task;
+        }
+        return taskStore.save(new Task(task.taskId(), task.description(),
+                Task.TaskStatus.CLOSED, task.createdAt(), Instant.now(), task.version(),
+                task.ownerAgent(), task.handoffCount()));
     }
 
     /**

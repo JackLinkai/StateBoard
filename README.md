@@ -210,7 +210,7 @@ asc:
       port: 6379
   compiler:
     default-budget-tokens: 1200
-    fact-conflict-strategy: LATEST_WINS   # LATEST_WINS | MANUAL | REJECT
+    # 冲突消解策略：当前固定 LATEST_WINS；MANUAL / REJECT 等可插拔策略 v0.5 提供
     soft-context-ttl: 30m
 ```
 
@@ -302,8 +302,14 @@ curl -X PATCH http://localhost:8080/v1/tasks/order-check-001/todos/t2 \
 # 任务列表（面板 / 运维）
 curl http://localhost:8080/v1/tasks
 
+# 单个任务详情
+curl http://localhost:8080/v1/tasks/order-check-001
+
 # 某任务全部已持久化的状态卡版本（回放面板 / 审计）
 curl http://localhost:8080/v1/tasks/order-check-001/versions
+
+# 关闭任务（幂等）：置 CLOSED，快照与回放保留
+curl -X POST http://localhost:8080/v1/tasks/order-check-001/close
 ```
 
 ### 7. 版本回放
@@ -372,7 +378,7 @@ String prompt = card.toPrompt() + "\n\n用户输入：" + userInput;
 }
 ```
 
-依赖：`pip install "mcp>=2"`。提供 10 个工具：create_task / add_constraint / record_fact / record_todo / update_todo / get_state_card / snapshot / restore_task / replay / handoff。
+依赖：`pip install "mcp>=2"`。提供 11 个工具：create_task / add_constraint / record_fact / record_todo / update_todo / close_task / get_state_card / snapshot / restore_task / replay / handoff。
 
 ---
 

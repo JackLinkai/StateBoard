@@ -132,6 +132,20 @@ class AscClientTest(unittest.TestCase):
         self.assertEqual(tasks[0]["taskId"], "t1")
         self.assertEqual(versions[0]["version"], 3)
 
+    def test_get_task_and_close_task(self):
+        self.session.responses.append(FakeResponse(200, {"taskId": "t1", "status": "ACTIVE"}))
+        self.session.responses.append(FakeResponse(200, {"taskId": "t1", "status": "CLOSED"}))
+
+        task = self.client.get_task("t1")
+        closed = self.client.close_task("t1")
+
+        self.assertEqual(self.session.calls[0]["method"], "GET")
+        self.assertEqual(self.session.calls[0]["url"], "http://asc.test/v1/tasks/t1")
+        self.assertEqual(self.session.calls[1]["method"], "POST")
+        self.assertEqual(self.session.calls[1]["url"], "http://asc.test/v1/tasks/t1/close")
+        self.assertEqual(task["status"], "ACTIVE")
+        self.assertEqual(closed["status"], "CLOSED")
+
     def test_no_body_returns_none(self):
         self.session.responses.append(FakeResponse(201))
 

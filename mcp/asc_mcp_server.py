@@ -77,6 +77,14 @@ def update_todo(task_id: str, todo_id: str, status: str) -> str:
 
 
 @mcp.tool()
+def close_task(task_id: str) -> str:
+    """关闭任务（幂等）：置为 CLOSED。已持久化的状态卡与快照保留，回放不受影响。
+    任务结束后调用；如需跨会话继续，请先用 snapshot 再 restore_task。"""
+    task = client.close_task(task_id)
+    return f"task {task['taskId']} closed"
+
+
+@mcp.tool()
 def get_state_card(task_id: str, budget: str = "") -> dict:
     """获取当前任务状态卡：必须遵守的约束 / 已确认事实 / 待办 / 已失效信息。
     每轮决策前调用，基于状态卡行动。budget: small/medium/large，留空用默认。"""
