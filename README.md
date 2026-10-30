@@ -196,18 +196,43 @@ cd dashboard && npm install && npm run build   # 产物输出到 src/main/resour
 
 面板功能：任务列表与创建/恢复、状态卡四格视图、待办一键完成/取消、快照与交接、版本条点击回放。
 
-### 配置（`application.yml` 示意）
+### 配置
+
+数据库 / Redis 等本地环境配置通过项目根目录的 **`.env`** 文件注入（已写入 `.gitignore`，不入库）：
+
+```bash
+cp .env.example .env    # 复制示例文件并按需修改（Windows 用 copy）
+```
+
+`.env` 按 properties 格式书写（`KEY=VALUE`），由 `application.yml` 顶部的
+`spring.config.import: optional:file:.env[.properties]` 加载；所有配置项在
+`application.yml` 中均带 `localhost` 默认值——没有 `.env` 也能以默认配置启动：
+
+```dotenv
+# .env 示例（完整项见 .env.example）
+ASC_DB_URL=jdbc:postgresql://localhost:5432/asc
+ASC_DB_USERNAME=asc
+ASC_DB_PASSWORD=asc
+ASC_REDIS_HOST=localhost
+ASC_REDIS_PORT=6379
+```
+
+`application.yml` 中与之对应的结构（占位符 `:` 后为默认值）：
 
 ```yaml
-asc:
-  storage:
-    postgres:
-      url: jdbc:postgresql://localhost:5432/asc
-      username: asc
-      password: asc
+spring:
+  config:
+    import: optional:file:.env[.properties]
+  datasource:
+    url: ${ASC_DB_URL:jdbc:postgresql://localhost:5432/asc}
+    username: ${ASC_DB_USERNAME:asc}
+    password: ${ASC_DB_PASSWORD:asc}
+  data:
     redis:
-      host: localhost
-      port: 6379
+      host: ${ASC_REDIS_HOST:localhost}
+      port: ${ASC_REDIS_PORT:6379}
+
+asc:
   compiler:
     default-budget-tokens: 1200
     fact-conflict-strategy: LATEST_WINS   # LATEST_WINS | MANUAL | REJECT

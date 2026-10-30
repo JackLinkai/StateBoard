@@ -1,16 +1,18 @@
 spring:
+  config:
+    import: optional:file:.env[.properties]   # 本地环境配置（.env 不入库）：复制 .env.example 为 .env 后按需修改
   datasource:
-    url: jdbc:postgresql://localhost:5432/asc
-    username: asc
-    password: asc
+    url: ${ASC_DB_URL:jdbc:postgresql://localhost:5432/asc}
+    username: ${ASC_DB_USERNAME:asc}
+    password: ${ASC_DB_PASSWORD:asc}
   jpa:
     hibernate:
       ddl-auto: validate   # 先 validate，表用 SQL 建
     open-in-view: false
   data:
     redis:
-      host: localhost
-      port: 6379
+      host: ${ASC_REDIS_HOST:localhost}
+      port: ${ASC_REDIS_PORT:6379}
       timeout: 2s          # 命令超时：Redis 故障时快速失败交给 HotStateCache 降级，而不是挂起
       connect-timeout: 2s
 
