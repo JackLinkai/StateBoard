@@ -3,6 +3,7 @@ package io.asc.web;
 import io.asc.application.CardNotFoundException;
 import io.asc.application.TaskAlreadyExistsException;
 import io.asc.application.TaskNotFoundException;
+import io.asc.core.conflict.ConflictDetectedException;
 import io.asc.web.error.ErrorResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -69,6 +70,12 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(CardNotFoundException.class)
     public ResponseEntity<ErrorResponse> handleCardNotFound(CardNotFoundException ex) {
         return build(HttpStatus.NOT_FOUND, "CARD_NOT_FOUND", ex.getMessage());
+    }
+
+    /** REJECT 冲突消解策略下的写入拦截：同 key 事实值冲突 → 409。 */
+    @ExceptionHandler(ConflictDetectedException.class)
+    public ResponseEntity<ErrorResponse> handleConflictDetected(ConflictDetectedException ex) {
+        return build(HttpStatus.CONFLICT, "CONFLICT_DETECTED", ex.getMessage());
     }
 
     /** 领域模型抛出的非法参数，比如空白 text。 */

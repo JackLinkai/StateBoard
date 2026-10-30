@@ -48,7 +48,7 @@ class StateCardCompilerTest {
         assertThat(item.id()).isEqualTo("f-exp");
         assertThat(item.reason()).isEqualTo(InvalidatedItem.Reason.EXPIRED.name());
         assertThat(item.supersededBy()).isNull();
-        assertThat(item.source()).isEqualTo(StateCardCompiler.COMPILER_SOURCE);
+        assertThat(item.source()).isEqualTo(io.asc.core.conflict.FactConflictResolver.COMPILER_SOURCE);
     }
 
     @Test

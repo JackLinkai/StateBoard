@@ -22,8 +22,10 @@ import java.time.Instant;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -396,5 +398,18 @@ class TaskControllerTest {
         mockMvc.perform(post("/v1/tasks/task-x/close"))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("TASK_NOT_FOUND"));
+    }
+
+    @Test
+    @DisplayName("POST /{id}/facts：REJECT 策略冲突 → 409 CONFLICT_DETECTED")
+    void record_fact_conflict_returns_409() throws Exception {
+        doThrow(new io.asc.core.conflict.ConflictDetectedException("task-1", "sales"))
+                .when(service).recordFact(eq("task-1"), eq("sales"), eq("120"), isNull(), anyString());
+
+        mockMvc.perform(post("/v1/tasks/task-1/facts")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"key\":\"sales\",\"value\":\"120\"}"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("CONFLICT_DETECTED"));
     }
 }

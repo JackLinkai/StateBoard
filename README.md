@@ -210,7 +210,7 @@ asc:
       port: 6379
   compiler:
     default-budget-tokens: 1200
-    # 冲突消解策略：当前固定 LATEST_WINS；MANUAL / REJECT 等可插拔策略 v0.5 提供
+    fact-conflict-strategy: LATEST_WINS   # LATEST_WINS | MANUAL | REJECT
     soft-context-ttl: 30m
 ```
 
@@ -442,6 +442,7 @@ MockAgent 是确定性规则解析器（无 LLM），两组行为差异完全由
 - [x] MCP Server（[mcp/asc_mcp_server.py](mcp/asc_mcp_server.py)）
 - [x] 可视化调试面板（[dashboard/](dashboard/)，构建后随服务访问 `http://localhost:8080`）
 - [x] 评测数据集与脚本（[benchmarks/](benchmarks/)）
+- [x] 冲突消解策略插件化（LATEST_WINS / MANUAL / REJECT）
 
 > 勾选状态请以实际仓库进度为准。详细设计见 [docs/architecture.md](docs/architecture.md)
 
@@ -476,9 +477,13 @@ MockAgent 是确定性规则解析器（无 LLM），两组行为差异完全由
 - 任务列表 / 待办状态流转 / 版本列表 API（`GET /v1/tasks`、`PATCH /v1/tasks/{id}/todos/{id}`、`GET /v1/tasks/{id}/versions`）
 - Dockerfile + Docker Compose 一键启动 asc-server
 
-### v0.5 — 编译策略演进
+### v0.5 — 编译策略演进 ✅
 
-- 冲突消解策略插件化（LATEST_WINS / MANUAL / REJECT）
+- **冲突消解策略插件化**：配置 `asc.compiler.fact-conflict-strategy` 一键切换——
+  - `LATEST_WINS`（默认）：同 key 最新事实进卡，旧值转 SUPERSEDED，可看到完整演变链；
+  - `MANUAL`：冲突不自动裁决，该 key 全部候选转 CONFLICT 等人工确认，宁可缺不可错；
+  - `REJECT`：写入时就拒绝同 key 异值（409 `CONFLICT_DETECTED`），编译侧兜底拦截；
+  - 扩展：实现 [FactConflictResolver](src/main/java/io/asc/core/conflict/FactConflictResolver.java) SPI + `@Component` 即注册新策略，编译器零改动。
 
 ### 长期
 

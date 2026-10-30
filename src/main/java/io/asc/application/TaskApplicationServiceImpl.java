@@ -1,5 +1,8 @@
 package io.asc.application;
 
+import io.asc.core.conflict.ConflictDetectedException;
+import io.asc.core.conflict.ConflictStrategy;
+import io.asc.core.conflict.ConflictStrategyProperties;
 import io.asc.domain.Budget;
 import io.asc.domain.Constraint;
 import io.asc.domain.Fact;
@@ -32,6 +35,10 @@ import java.util.UUID;
  *   <li>text/level/key/value 等业务字段原样透传，校验是 domain 的事
  *       （比如 Constraint 的空白 text 在构造 record 时就会被拒绝）。</li>
  * </ul>
+ *
+ * <p>REJECT 策略下的写入拦截是本类唯一的规则例外：同 key 已存在
+ * 值不同的未过期事实时，recordFact 直接抛 {@link ConflictDetectedException}
+ * （409），从源头保证同一 key 只有一个值；同值重写视为幂等，放行。
  */
 @Service
 public class TaskApplicationServiceImpl implements TaskApplicationService {
@@ -39,12 +46,15 @@ public class TaskApplicationServiceImpl implements TaskApplicationService {
     private final TaskStore taskStore;
     private final StateItemStore stateItemStore;
     private final StateCardQueryService stateCardQueryService;
+    private final ConflictStrategyProperties conflictProperties;
 
     public TaskApplicationServiceImpl(TaskStore taskStore, StateItemStore stateItemStore,
-                                      StateCardQueryService stateCardQueryService) {
+                                      StateCardQueryService stateCardQueryService,
+                                      ConflictStrategyProperties conflictProperties) {
         this.taskStore = taskStore;
         this.stateItemStore = stateItemStore;
         this.stateCardQueryService = stateCardQueryService;
+        this.conflictProperties = conflictProperties;
     }
 
     @Override
@@ -79,8 +89,25 @@ public class TaskApplicationServiceImpl implements TaskApplicationService {
     @Transactional
     public void recordFact(String taskId, String key, String value,
                            Instant expiresAt, String source) {
+        if (conflictProperties.get() == ConflictStrategy.REJECT) {
+            rejectOnConflictingFact(taskId, key, value);
+        }
         recordEvent(taskId, new Fact(null, taskId, key, value, null, expiresAt,
                 sourceOrDefault(source, "tool"), 0));
+    }
+
+    /** REJECT 策略写入拦截：同 key 已有值不同的未过期事实 → 409；同值重写放行。 */
+    private void rejectOnConflictingFact(String taskId, String key, String value) {
+        Instant now = Instant.now();
+        boolean conflict = stateItemStore.findByTaskId(taskId).stream()
+                .filter(Fact.class::isInstance)
+                .map(Fact.class::cast)
+                .filter(f -> f.key().equals(key))
+                .filter(f -> !f.isExpired(now))
+                .anyMatch(f -> !f.value().equals(value));
+        if (conflict) {
+            throw new ConflictDetectedException(taskId, key);
+        }
     }
 
     @Override

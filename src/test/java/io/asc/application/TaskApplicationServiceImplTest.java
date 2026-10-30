@@ -45,6 +45,9 @@ class TaskApplicationServiceImplTest {
     @Mock
     private StateCardQueryService stateCardQueryService;
 
+    @Mock
+    private io.asc.core.conflict.ConflictStrategyProperties conflictProperties;
+
     @InjectMocks
     private TaskApplicationServiceImpl service;
 
@@ -212,6 +215,58 @@ class TaskApplicationServiceImplTest {
         when(taskStore.findAll()).thenReturn(java.util.List.of(existingTask(3)));
 
         assertThat(service.listTasks()).hasSize(1).first().extracting(Task::taskId).isEqualTo("task-1");
+    }
+
+    @Test
+    @DisplayName("getTask：任务存在原样返回，不存在抛 TaskNotFoundException")
+    void get_task() {
+        when(taskStore.findById("task-1")).thenReturn(Optional.of(existingTask(3)));
+        when(taskStore.findById("task-x")).thenReturn(Optional.empty());
+
+        assertThat(service.getTask("task-1").taskId()).isEqualTo("task-1");
+        assertThatThrownBy(() -> service.getTask("task-x")).isInstanceOf(TaskNotFoundException.class);
+    }
+
+    @Test
+    @DisplayName("recordFact（REJECT 策略）：同 key 值不同 → ConflictDetectedException，不落库")
+    void record_fact_rejects_conflicting_value() {
+        when(conflictProperties.get()).thenReturn(io.asc.core.conflict.ConflictStrategy.REJECT);
+        when(stateItemStore.findByTaskId("task-1")).thenReturn(java.util.List.of(
+                new Fact("f1", "task-1", "sales", "100", T0, null, "tool", 1)));
+
+        assertThatThrownBy(() -> service.recordFact("task-1", "sales", "120", null, "tool"))
+                .isInstanceOf(io.asc.core.conflict.ConflictDetectedException.class);
+
+        verify(stateItemStore, org.mockito.Mockito.never()).save(any());
+    }
+
+    @Test
+    @DisplayName("recordFact（REJECT 策略）：同值重写放行（幂等）；旧事实已过期不拦截")
+    void record_fact_allows_same_value_and_expired_conflict() {
+        when(conflictProperties.get()).thenReturn(io.asc.core.conflict.ConflictStrategy.REJECT);
+        when(taskStore.findById("task-1")).thenReturn(Optional.of(existingTask(1)));
+        when(stateItemStore.findByTaskId("task-1")).thenReturn(java.util.List.of(
+                new Fact("f1", "task-1", "sales", "120", T0, null, "tool", 1),
+                // 同 key 另一条已过期的事实，值不同但已失效，不参与冲突判定
+                new Fact("f2", "task-1", "sales", "999",
+                        T0.minusSeconds(120), T0.minusSeconds(60), "tool", 2)));
+        when(stateItemStore.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        service.recordFact("task-1", "sales", "120", null, "tool");
+
+        verify(stateItemStore).save(any());
+    }
+
+    @Test
+    @DisplayName("recordFact（LATEST_WINS 策略）：不做写入拦截，直接落库")
+    void record_fact_latest_wins_no_interception() {
+        when(conflictProperties.get()).thenReturn(io.asc.core.conflict.ConflictStrategy.LATEST_WINS);
+        when(taskStore.findById("task-1")).thenReturn(Optional.of(existingTask(1)));
+        when(stateItemStore.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        service.recordFact("task-1", "sales", "120", null, "tool");
+
+        verify(stateItemStore).save(any());
     }
 
     @Test

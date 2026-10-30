@@ -1,11 +1,16 @@
 package io.asc.core;
 
+import io.asc.core.conflict.ConflictStrategy;
+import io.asc.core.conflict.ConflictStrategyProperties;
+import io.asc.core.conflict.FactConflictResolver;
+import io.asc.core.conflict.LatestWinsConflictResolver;
 import io.asc.domain.Constraint;
 import io.asc.domain.Fact;
 import io.asc.domain.InvalidatedItem;
 import io.asc.domain.StateCard;
 import io.asc.domain.StateItem;
 import io.asc.domain.Todo;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
@@ -13,9 +18,7 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Deque;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 
 /**
  * L2 状态编译器：把任务的全量状态项编译成一张 StateCard，并支持按预算裁剪。
@@ -27,9 +30,13 @@ import java.util.Map;
  *   <li><b>TTL 过滤</b>：过期的 Fact 不再进已确认事实，转成
  *       InvalidatedItem(EXPIRED) 进"过期/冲突"格——Agent 能看到"这条为什么没了"，
  *       而不是静默消失；</li>
- *   <li><b>事实冲突消解（LATEST_WINS）</b>：同 key 的活事实按 createdAt（并列比
- *       version）取最新一条进卡，旧事实转成 InvalidatedItem(SUPERSEDED)，
- *       supersededBy 指向最新一条——对应"销量 100 被 120 覆盖"；</li>
+ *   <li><b>事实冲突消解（可插拔 SPI）</b>：同 key 多条活事实交给
+ *       {@link FactConflictResolver} 处理。策略由
+ *       {@code asc.compiler.fact-conflict-strategy} 配置选择：
+ *       LATEST_WINS（默认，最新进卡旧转 SUPERSEDED）/
+ *       MANUAL（冲突全部转 CONFLICT 等人工裁决）/
+ *       REJECT（写入侧拦截为主，编译兜底抛异常）——
+ *       新增策略实现 SPI + @Component 即可，编译器不改；</li>
  *   <li><b>约束分格</b>：HARD / SOFT 各进一格；</li>
  *   <li><b>待办过滤</b>：只保留 OPEN，DONE / CANCELLED 不进卡；</li>
  *   <li><b>存量 InvalidatedItem 透传</b>：之前持久化过的失效记录原样进卡；</li>
@@ -46,11 +53,28 @@ import java.util.Map;
 @Component
 public class StateCardCompiler {
 
-    /** 衍生失效记录的来源标识：由编译器生成，而非 user / tool 写入。 */
-    static final String COMPILER_SOURCE = "compiler";
-
     /** 每条失效记录的固定 token 估值：reason + supersededBy 等元数据开销。 */
     private static final int INVALIDATED_TOKENS = 20;
+
+    private final FactConflictResolver conflictResolver;
+
+    /** Spring 装配：按配置选择策略实现；配置非法在启动期即失败。 */
+    @Autowired
+    public StateCardCompiler(List<FactConflictResolver> resolvers,
+                             ConflictStrategyProperties properties) {
+        ConflictStrategy strategy = properties.get();
+        this.conflictResolver = resolvers.stream()
+                .filter(r -> r.strategy() == strategy)
+                .findFirst()
+                .orElseThrow(() -> new IllegalStateException(
+                        "no FactConflictResolver registered for strategy " + strategy));
+    }
+
+    /** 便捷构造：默认 LATEST_WINS（测试 / 手工装配）。 */
+    public StateCardCompiler() {
+        this(List.of(new LatestWinsConflictResolver()),
+                new ConflictStrategyProperties("LATEST_WINS"));
+    }
 
     /**
      * 编译全量状态卡（不裁剪）。裁剪由 {@link #trim} 单独承担：
@@ -78,7 +102,7 @@ public class StateCardCompiler {
                     if (f.isExpired(now)) {
                         invalidated.add(new InvalidatedItem(f.id(), taskId,
                                 InvalidatedItem.Reason.EXPIRED.name(), null,
-                                now, COMPILER_SOURCE, f.version()));
+                                now, FactConflictResolver.COMPILER_SOURCE, f.version()));
                     } else {
                         liveFacts.add(f);
                     }
@@ -90,8 +114,8 @@ public class StateCardCompiler {
             }
         }
 
-        /* ---------- 2. LATEST_WINS 冲突消解 ---------- */
-        List<Fact> winners = resolveConflicts(taskId, liveFacts, invalidated, now);
+        /* ---------- 2. 事实冲突消解（SPI，按配置策略） ---------- */
+        List<Fact> winners = conflictResolver.resolve(taskId, liveFacts, invalidated, now);
 
         /* ---------- 3. 排序后组卡 ---------- */
         hard.sort(Comparator.comparing(StateItem::createdAt));
@@ -158,29 +182,6 @@ public class StateCardCompiler {
     }
 
     /* ---------- 内部步骤 ---------- */
-
-    /** 同 key 冲突消解：每组按 createdAt 升序排（并列比 version），最后一条获胜，其余转 SUPERSEDED。 */
-    private List<Fact> resolveConflicts(String taskId, List<Fact> liveFacts,
-                                        List<InvalidatedItem> invalidated, Instant now) {
-        Map<String, List<Fact>> byKey = new LinkedHashMap<>();
-        for (Fact fact : liveFacts) {
-            byKey.computeIfAbsent(fact.key(), k -> new ArrayList<>()).add(fact);
-        }
-
-        List<Fact> winners = new ArrayList<>();
-        for (List<Fact> group : byKey.values()) {
-            group.sort(Comparator.comparing(Fact::createdAt).thenComparingLong(Fact::version));
-            Fact winner = group.getLast();
-            winners.add(winner);
-            for (int i = 0; i < group.size() - 1; i++) {
-                Fact loser = group.get(i);
-                invalidated.add(new InvalidatedItem(loser.id(), taskId,
-                        InvalidatedItem.Reason.SUPERSEDED.name(), winner.id(),
-                        now, COMPILER_SOURCE, loser.version()));
-            }
-        }
-        return winners;
-    }
 
     /** 卡的估算 token：保留项逐条求和，空卡至少 1。与 {@link #tokensOf} 同一套规则，trim 的算术才自洽。 */
     private int estimateTokens(List<Constraint> hard, List<Constraint> soft,
