@@ -32,6 +32,9 @@ build/
 ### VS Code ###
 .vscode/
 
+### 本地运行产物 ###
+server.log
+
 ### Python SDK / MCP ###
 __pycache__/
 *.pyc

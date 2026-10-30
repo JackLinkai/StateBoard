@@ -140,8 +140,11 @@ public class TaskApplicationServiceImpl implements TaskApplicationService {
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public StateCard getStateCard(String taskId, String tenantId, Budget budget, CardView view) {
+        // 注意不能 readOnly：内层 StateCardQueryService 会把编译出的全量卡持久化到
+        // state_card_version（读时固化正式版本）。外层只读事务会让 Hibernate 进入
+        // FlushMode.MANUAL，静默吞掉那次 INSERT（曾经导致版本列表永远只有快照/交接那一版）。
         return stateCardQueryService.getStateCard(taskId, tenantId, budget, view);
     }
 
