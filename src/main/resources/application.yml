@@ -11,6 +11,8 @@ spring:
     redis:
       host: localhost
       port: 6379
+      timeout: 2s          # 命令超时：Redis 故障时快速失败交给 HotStateCache 降级，而不是挂起
+      connect-timeout: 2s
 
 asc:
   compiler:
