@@ -1,0 +1,41 @@
+{
+  "default_provider": "deepseek",
+  "note": "provider 注册表：新增 OpenAI 兼容服务只需加一项；非 OpenAI 协议需在 bench_llm.py 增加对应 api_style 客户端。",
+  "providers": {
+    "deepseek": {
+      "api_style": "openai_chat",
+      "base_url": "https://api.deepseek.com/v1",
+      "api_key_envs": ["ASC_BENCH_LLM_API_KEY", "DEEPSEEK_API_KEY"],
+      "requires_api_key": true,
+      "default_model": "deepseek-chat"
+    },
+    "ollama": {
+      "api_style": "openai_chat",
+      "base_url": "http://localhost:11434/v1",
+      "api_key_envs": [],
+      "requires_api_key": false,
+      "default_model": "qwen2.5:7b"
+    },
+    "openai": {
+      "api_style": "openai_chat",
+      "base_url": "https://api.openai.com/v1",
+      "api_key_envs": ["OPENAI_API_KEY", "ASC_BENCH_LLM_API_KEY"],
+      "requires_api_key": true,
+      "default_model": "gpt-4o-mini"
+    },
+    "qwen": {
+      "api_style": "openai_chat",
+      "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+      "api_key_envs": ["DASHSCOPE_API_KEY", "ASC_BENCH_LLM_API_KEY"],
+      "requires_api_key": true,
+      "default_model": "qwen-plus"
+    },
+    "custom": {
+      "api_style": "openai_chat",
+      "base_url": "",
+      "api_key_envs": ["ASC_BENCH_LLM_API_KEY"],
+      "requires_api_key": false,
+      "default_model": ""
+    }
+  }
+}

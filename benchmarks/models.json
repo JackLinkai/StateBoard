@@ -1,0 +1,48 @@
+{
+  "updated_at": "2026-11-11",
+  "note": "价格仅用于成本对比，单位：每 100 万 token 的计价货币。运行正式评测前请以厂商官方价目为准；Ollama 本地模型成本记 0。",
+  "models": {
+    "deepseek-chat": {
+      "context_window": 128000,
+      "input_per_mtok": 0.28,
+      "output_per_mtok": 0.42,
+      "currency": "USD",
+      "price_note": "按 DeepSeek V3.2 系列公开价目填写的示例值，请运行前核对"
+    },
+    "deepseek-reasoner": {
+      "context_window": 128000,
+      "input_per_mtok": 0.28,
+      "output_per_mtok": 0.42,
+      "currency": "USD",
+      "price_note": "按 DeepSeek V3.2 系列公开价目填写的示例值，请运行前核对"
+    },
+    "gpt-4o-mini": {
+      "context_window": 128000,
+      "input_per_mtok": 0.15,
+      "output_per_mtok": 0.60,
+      "currency": "USD",
+      "price_note": "OpenAI 公开价目示例值，请运行前核对"
+    },
+    "qwen-plus": {
+      "context_window": 131072,
+      "input_per_mtok": null,
+      "output_per_mtok": null,
+      "currency": "CNY",
+      "price_note": "按百炼官方价目补充后成本才会计算"
+    },
+    "qwen2.5:7b": {
+      "context_window": 32768,
+      "input_per_mtok": 0,
+      "output_per_mtok": 0,
+      "currency": "USD",
+      "price_note": "本地 Ollama，无 API 计费"
+    },
+    "llama3.1:8b": {
+      "context_window": 131072,
+      "input_per_mtok": 0,
+      "output_per_mtok": 0,
+      "currency": "USD",
+      "price_note": "本地 Ollama，无 API 计费"
+    }
+  }
+}

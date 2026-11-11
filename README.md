@@ -215,6 +215,11 @@ ASC_DB_USERNAME=asc
 ASC_DB_PASSWORD=asc
 ASC_REDIS_HOST=localhost
 ASC_REDIS_PORT=6379
+
+# v0.7 真实 LLM 评测（benchmarks/runner.py --agent llm）
+# 服务商可插拔：切换只改 ASC_BENCH_PROVIDER，注册表见 benchmarks/providers.json
+ASC_BENCH_PROVIDER=deepseek
+ASC_BENCH_LLM_API_KEY=your-api-key
 ```
 
 `application.yml` 中与之对应的结构（占位符 `:` 后为默认值）：
@@ -423,14 +428,57 @@ ASC 的目标不是“更花哨的上下文”，而是可验证的改善。评�
 | **输入 token 消耗** | 每轮平均输入 token      |
 | **重复工具调用次数**    | 相同工具 + 相同参数重复调用次数 |
 | **恢复任务重放步数**    | 跨会话恢复后回到原进度所需步数   |
+| **过期事实引用率**（v0.7） | 引用了已被覆盖 / 失效旧值的次数 |
+| **真实 Token 成本**（v0.7） | 按实际 usage 与模型单价折算的美元成本 |
+| **完成率方差**（v0.7）  | 同一场景重复 N 次的均值 ± 标准差 |
 
 > 评测数据集与脚本已随 v0.4 开源：[benchmarks/](benchmarks/)。
 
 运行（需先启动 asc-server）：
 
 ```bash
+# v0.4 确定性 MockAgent（回归 / 离线验证）
 python benchmarks/runner.py --window 350 --json-out results.json
+
+# v0.7 真实 LLM（L1）：默认 DeepSeek，也可任意 OpenAI 兼容端点
+python benchmarks/runner.py --agent llm --repeats 5 \
+  --trace-dir benchmarks/results \
+  --json-out benchmarks/results/v07-l1.json
+
+# 查看已注册的服务商与默认模型
+python benchmarks/runner.py --list-providers
 ```
+
+服务商可插拔：注册表在 [benchmarks/providers.json](benchmarks/providers.json)，
+内置 `deepseek` / `ollama` / `openai` / `qwen` / `custom`。切换只改配置或命令行，不改代码：
+
+```bash
+# 本地 Ollama（无需密钥；先 ollama pull qwen2.5:7b 并确认服务已启动）
+python benchmarks/runner.py --agent llm --provider ollama --model qwen2.5:7b
+
+# 任意自建 / 第三方 OpenAI 兼容端点
+python benchmarks/runner.py --agent llm --provider custom \
+  --llm-base-url http://localhost:8000/v1 --model my-model
+```
+
+新增服务商只需在 `providers.json` 加一项（`api_style` / `base_url` /
+`api_key_envs` / `requires_api_key` / `default_model`）。当前只实现了
+`api_style=openai_chat`；接入非 OpenAI 协议（如 Anthropic Messages）需在
+[benchmarks/bench_llm.py](benchmarks/bench_llm.py) 的 `create_chat_client` 中
+增加对应客户端——这是唯一扩展点。
+
+真实 LLM 需要在 `.env` 中配置（密钥不入库）：
+
+```dotenv
+ASC_BENCH_PROVIDER=deepseek
+ASC_BENCH_LLM_API_KEY=your-api-key
+# 也支持按服务商覆盖：ASC_BENCH_DEEPSEEK_MODEL / ASC_BENCH_OLLAMA_BASE_URL 等
+```
+
+`--agent llm` 的决策协议是固定 JSON（`EXECUTE` / `REJECT` / `SKIP` + `query` +
+`citation` + `reason`），两组共用同一系统提示与输出格式，唯一差异是上下文：
+Baseline 注入原始历史，ASC 注入编译后的状态卡。判分优先规则化，逐轮 trace
+写入 `--trace-dir/<run_id>/raw.jsonl`，便于复核模型当时看到的内容。
 
 数据集在 [benchmarks/datasets/](benchmarks/datasets/)（JSONL，每行一个场景），当前包含三类场景：
 
@@ -440,7 +488,7 @@ python benchmarks/runner.py --window 350 --json-out results.json
 | `fact_conflict`           | 数仓修正后，Agent 是否引用唯一有效值而不是旧值    |
 | `resume_progress`         | 跨会话恢复后，回原进度要几步、重复查询有多少      |
 
-MockAgent 是确定性规则解析器（无 LLM），两组行为差异完全由"注入内容的质量"驱动。一次实测（窗口 350 字符，3 场景）：
+MockAgent 是确定性规则解析器（无 LLM），两组行为差异完全由"注入内容的质量"驱动。一次 v0.4 实测（窗口 350 字符，3 场景）：
 
 | 指标              | Baseline | ASC   |
 |-----------------|----------|-------|
@@ -448,6 +496,9 @@ MockAgent 是确定性规则解析器（无 LLM），两组行为差异完全由
 | 重复工具调用总数   | 3        | **0** |
 | 平均每轮输入 token | 161      | **47** |
 | 恢复重放步数总数   | 2        | **1** |
+
+v0.7 的真实 LLM 数据不混入上表：`--agent llm` 会单独产出 JSON 结果与逐轮 trace，
+模型、温度、重复次数与上下文窗口都记录在结果文件里，便于复现与对比。
 
 ---
 
@@ -467,6 +518,7 @@ MockAgent 是确定性规则解析器（无 LLM），两组行为差异完全由
 - [x] MCP Server（[mcp/asc_mcp_server.py](mcp/asc_mcp_server.py)）
 - [x] 可视化调试面板（[dashboard/](dashboard/)，构建后随服务访问 `http://localhost:8080`）
 - [x] 评测数据集与脚本（[benchmarks/](benchmarks/)）
+- [x] 真实 LLM 评测管线（L1：结构化决策 / 规则判分 / 成本统计 / 逐轮 trace）
 - [x] 冲突消解策略插件化（LATEST_WINS / MANUAL / REJECT）
 - [x] 多租户隔离（`X-ASC-Tenant` 请求头）与状态卡权限视图（full / lean / audit）
 
@@ -523,11 +575,27 @@ MockAgent 是确定性规则解析器（无 LLM），两组行为差异完全由
   view 决定格子可见性（权限维度），budget 决定 token 上限（容量维度）：
   先 view 裁格、再 budget 裁条，不可见的格子不占预算。
 
-### v0.7 — 真实 LLM 端到端评测（规划中）
+### v0.7 — 真实 LLM 端到端评测（L1 已实现，L2/L3 规划中）
 
 当前评测（v0.4）的决策器是**确定性 MockAgent**（规则解析，无 LLM）：它隔离了模型变量，
 证明了注入层本身的收益（token -70.8%、约束违反 33.3%→0%），但测不了模型的随机行为。
 v0.7 把决策器换成真实 LLM，在端到端链路上验证并量化同样的结论。
+
+**L1 已实现**：
+
+- `benchmarks/runner.py --agent llm`：任意 OpenAI Chat Completions 兼容端点，
+  服务商可插拔（[providers.json](benchmarks/providers.json)：DeepSeek / Ollama /
+  OpenAI / Qwen / custom），固定 JSON 决策协议（`EXECUTE` / `REJECT` / `SKIP` +
+  `query` + `citation` + `reason`）；
+- 规则判分：约束越界、**过期事实引用**、参数漂移、误拒绝、重复调用、恢复重放步数；
+- 真实 `usage` 计费（`benchmarks/models.json` 维护上下文窗口与单价）与完成率均值 ± 方差；
+- 逐轮 trace（prompt 上下文 / 决策 / usage）写入 `--trace-dir/<run_id>/raw.jsonl`；
+- `--view full|lean|audit` 可直接做权限视图对照实验；
+- 回归保障：`--agent mock` 与 v0.4 结果逐项一致；[离线单测](benchmarks/tests/test_bench.py)
+  覆盖 JSON 解析、过期引用判分、成本计算与 JSON mode 回退。
+
+真实模型运行需在 `.env` 配置密钥（不入库）；L1 的原始数据与报告在配置密钥后由
+`--json-out` / `--trace-dir` 产出。
 
 - **实验设计**：对照组不变（Baseline 全量历史 vs ASC 状态卡注入），同一模型、温度 0、
   结构化决策输出（EXECUTE / REJECT / SKIP + 引用的事实值）；判分优先规则化
@@ -545,10 +613,10 @@ v0.7 把决策器换成真实 LLM，在端到端链路上验证并量化同样�
   2. `lean` 视图裁掉软约束与失效格后，完成率损失是否可接受（view 裁格的收益/风险量化）；
   3. 干扰文本密度与轮次增加时，状态卡相对全量历史的优势是扩大还是收敛；
 - **阶段**：
-  - L1（MVP）：1 个模型 × 3 场景 × 5 次重复，跑通结构化输出解析 / 自动判分 / 成本统计管线；
+  - L1（MVP，已实现）：1 个模型 × 3 场景 × 5 次重复，跑通结构化输出解析 / 自动判分 / 成本统计管线；
   - L2：模型矩阵 × 场景扩充（干扰密度梯度、30+ 轮长任务）；
   - L3：真实多工具任务（非玩具场景），评测结果页开放可复现脚本与原始数据；
-- **交付物**：`benchmarks/runner.py --agent llm` 扩展、评测报告与原始数据入库、技术文章一篇。
+- **交付物**：`benchmarks/runner.py --agent llm` 扩展（已完成）、评测报告与原始数据入库（待真实密钥运行）、技术文章一篇。
 
 ### 长期
 

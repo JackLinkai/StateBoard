@@ -162,12 +162,38 @@ TTL = `asc.compiler.soft-context-ttl`（默认 30m）；缓存的是原始项，
 
 [benchmarks/](../benchmarks/)：Baseline（全量历史 + 注意力窗口截断）vs ASC（状态卡注入），
 五指标对比——约束违反率 / 任务完成率 / 输入 token / 重复工具调用 / 恢复重放步数。
-Runner 用 Python SDK 连真实服务跑（MockAgent 确定性决策）。
+
+Runner 支持两种决策器：
+
+- `--agent mock`：确定性规则解析（v0.4 行为），用于回归与离线验证；
+- `--agent llm`：真实模型（任意 OpenAI Chat Completions 兼容端点），
+  固定 JSON 决策协议（EXECUTE / REJECT / SKIP + query + citation），由 runner 统一执行工具。
+
+服务商可插拔：`benchmarks/providers.json` 注册 `api_style` / `base_url` /
+`api_key_envs` / `requires_api_key` / `default_model`，内置
+`deepseek`（默认）/ `ollama` / `openai` / `qwen` / `custom`。切换只改
+`ASC_BENCH_PROVIDER` 或 `--provider`；`--list-providers` 可查看注册表。
+`api_style` 是唯一协议扩展点：当前实现 `openai_chat`（`create_chat_client`），
+接入 Anthropic Messages 等非 OpenAI 协议需新增对应客户端实现。
+
+v0.7 L1 模块：
+
+| 文件 | 职责 |
+|---|---|
+| `benchmarks/bench_llm.py` | Prompt 组装、模型调用（客户端工厂）、JSON 解析、重试、usage 提取 |
+| `benchmarks/bench_scoring.py` | 规则判分（越界 / 过期引用 / 参数漂移 / 误拒绝）、成本、均值 ± 方差 |
+| `benchmarks/bench_config.py` | `.env`、provider 注册表、`models.json` 上下文窗口与单价 |
+| `benchmarks/providers.json` | 服务商注册表（DeepSeek / Ollama / OpenAI / Qwen / custom） |
+| `benchmarks/models.json` | 模型矩阵（deepseek-chat / gpt-4o-mini / qwen-plus / qwen2.5:7b 等） |
+| `benchmarks/tests/test_bench.py` | 离线单测（解析、判分、成本、JSON mode 回退、provider 解析） |
+
+指标在原有五项上新增：过期事实引用率、真实计费成本、完成率均值 ± 标准差；
+逐轮 trace 写入 `--trace-dir/<run_id>/raw.jsonl`。
 
 ---
 
 ## 6. Roadmap 摘要
 
 - ✅ v0.1 核心服务 → v0.2 治理 → v0.3 生态接入 → v0.4 可观测与评测 →
-  v0.5 冲突策略插件化 → v0.6 多租户与权限视图
+  v0.5 冲突策略插件化 → v0.6 多租户与权限视图 → v0.7 L1 真实 LLM 评测管线
 - 长期：状态压缩三级折叠、跨任务经验复用、租户级正式鉴权
