@@ -52,6 +52,9 @@ src/main/resources/static/
 ### Benchmarks 本地结果 ###
 benchmarks/results*.json
 
+### 第三方上游代码（体积大、自带 .git，由使用者自行 clone） ###
+vendor/
+
 ### 个人材料（不随仓库公开） ###
 简历与面试准备.md
 docs/wechat-promotion.md
