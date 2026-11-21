@@ -1,0 +1,32 @@
+{
+  "group": "A",
+  "file": "D:\\work_space\\StateBoard\\e2e_article\\results\\e2e-article-20261121-1200\\articles\\A.md",
+  "chars": 0,
+  "cjkChars": 0,
+  "estimatedTokens": 0,
+  "firstLine": "",
+  "h1s": [],
+  "topicsHit": [],
+  "extraH1": [],
+  "backtickSpans": 0,
+  "boldSpans": 0,
+  "forbiddenHits": {},
+  "forbiddenCount": 0,
+  "numberExprCount": 0,
+  "checks": {
+    "首行是今日学习计划": false,
+    "首行无标题标记": true,
+    "四个一级标题齐全": false,
+    "无多余一级标题": true,
+    "衔接上一篇": false,
+    "含边界段": false,
+    "固定句式收尾": false,
+    "术语用反引号>=10": false,
+    "重点加粗>=5": false,
+    "字数2500-3500": false,
+    "无禁用内容": true
+  },
+  "passed": 3,
+  "total": 11,
+  "planParagraph": ""
+}

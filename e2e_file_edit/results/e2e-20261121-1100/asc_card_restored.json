@@ -1,0 +1,50 @@
+{
+  "taskId": "e2e-20261121-1100-asc-resume",
+  "version": 5,
+  "hardConstraints": [
+    {
+      "id": "9fd22db2-059d-470c-a720-fb995b4beeff",
+      "taskId": "e2e-20261121-1100-asc-resume",
+      "text": "只允许修改 config.json 的 timeout 字段",
+      "level": "HARD",
+      "createdAt": "2026-11-21T03:14:14.038027Z",
+      "source": "user",
+      "version": 1
+    },
+    {
+      "id": "4c4ef380-74f2-4455-bb9d-c43de56ac44d",
+      "taskId": "e2e-20261121-1100-asc-resume",
+      "text": "禁止删除任何文件",
+      "level": "HARD",
+      "createdAt": "2026-11-21T03:14:14.128989Z",
+      "source": "user",
+      "version": 2
+    },
+    {
+      "id": "9f2cd123-0e92-44f3-9009-7e471c55711d",
+      "taskId": "e2e-20261121-1100-asc-resume",
+      "text": "每次修改前先记待办，改完标记完成",
+      "level": "HARD",
+      "createdAt": "2026-11-21T03:14:14.143987Z",
+      "source": "user",
+      "version": 3
+    }
+  ],
+  "softConstraints": [],
+  "verifiedFacts": [
+    {
+      "id": "5322b938-6490-4799-9132-45a39df51a3a",
+      "taskId": "e2e-20261121-1100-asc-resume",
+      "key": "timeout_target",
+      "value": "50",
+      "createdAt": "2026-11-21T03:14:14.228998Z",
+      "expiresAt": null,
+      "source": "tool:final",
+      "version": 5
+    }
+  ],
+  "openTodos": [],
+  "invalidated": [],
+  "estimatedTokens": 18,
+  "compiledAt": "2026-11-21T03:14:14.614991300Z"
+}

@@ -1,0 +1,69 @@
+{
+  "taskId": "e2e-20261121-1116-asc",
+  "version": 9,
+  "hardConstraints": [
+    {
+      "id": "75f4b54f-0442-475f-84c9-25f6f0d886e6",
+      "taskId": "e2e-20261121-1116-asc",
+      "text": "只允许修改 config.json 的 timeout 字段",
+      "level": "HARD",
+      "createdAt": "2026-11-21T03:15:04.617616Z",
+      "source": "user",
+      "version": 1
+    },
+    {
+      "id": "5b4272ac-3971-43bc-9ed6-2c0c2569c767",
+      "taskId": "e2e-20261121-1116-asc",
+      "text": "禁止删除任何文件",
+      "level": "HARD",
+      "createdAt": "2026-11-21T03:15:04.650615Z",
+      "source": "user",
+      "version": 2
+    },
+    {
+      "id": "4a90804b-8b65-4803-8987-a241e624cddf",
+      "taskId": "e2e-20261121-1116-asc",
+      "text": "每次修改前先记待办，改完标记完成",
+      "level": "HARD",
+      "createdAt": "2026-11-21T03:15:04.664655Z",
+      "source": "user",
+      "version": 3
+    }
+  ],
+  "softConstraints": [],
+  "verifiedFacts": [
+    {
+      "id": "667911c8-a42f-4167-8038-5c25be09e3dd",
+      "taskId": "e2e-20261121-1116-asc",
+      "key": "timeout_target",
+      "value": "50",
+      "createdAt": "2026-11-21T03:15:04.705617Z",
+      "expiresAt": null,
+      "source": "tool:final",
+      "version": 6
+    }
+  ],
+  "openTodos": [
+    {
+      "id": "04b06041-0702-4be5-9a1d-618d188d8c41",
+      "taskId": "e2e-20261121-1116-asc",
+      "text": "把 timeout 改为 50",
+      "status": "OPEN",
+      "createdAt": "2026-11-21T03:15:04.778618Z",
+      "source": "user",
+      "version": 8
+    },
+    {
+      "id": "1163858f-3c64-47e7-9672-3590d6396ea6",
+      "taskId": "e2e-20261121-1116-asc",
+      "text": "确认没有改动其他字段",
+      "status": "OPEN",
+      "createdAt": "2026-11-21T03:15:04.808644Z",
+      "source": "user",
+      "version": 9
+    }
+  ],
+  "invalidated": [],
+  "estimatedTokens": 25,
+  "compiledAt": "2026-11-21T03:15:04.858966800Z"
+}

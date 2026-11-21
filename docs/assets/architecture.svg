@@ -1,0 +1,105 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 680 646" width="100%" role="img">
+<title>ASC 架构分层图</title>
+<desc>Agent 编排层经状态增量、L1 采集、L2 编译、L3 治理、L4 接口贯通，右侧为持久化存储、四格状态卡与端到端实测指标，各层标注中英双语。</desc>
+<defs>
+<marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+<path d="M2 1L8 5L2 9" fill="none" stroke="#85B7EB" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+</marker>
+</defs>
+<rect x="0" y="0" width="680" height="646" rx="12" fill="#FFFFFF"/>
+
+<text x="40" y="28" font-family="system-ui, -apple-system, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif" font-size="15" font-weight="500" fill="#2C2C2A">ASC · Agent 运行时状态治理层</text>
+<text x="40" y="47" font-family="system-ui, -apple-system, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif" font-size="11" fill="#5F5E5A">编排管怎么跑 · ASC 管此刻什么状态有效 · 存储管持久化</text>
+<text x="40" y="61" font-family="system-ui, -apple-system, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif" font-size="10" fill="#5F5E5A">Orchestration decides how · ASC decides what is valid now · Storage persists</text>
+
+<rect x="40" y="72" width="390" height="62" rx="10" fill="#EEEDFE" stroke="#534AB7" stroke-width="0.5"/>
+<text x="56" y="94" font-family="system-ui, -apple-system, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif" font-size="13.5" font-weight="500" fill="#3C3489">Agent 编排层 · Agent Orchestration</text>
+<text x="56" y="112" font-family="system-ui, -apple-system, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif" font-size="10.5" fill="#534AB7">决定任务怎么跑 · Decides how the task runs</text>
+<text x="56" y="127" font-family="system-ui, -apple-system, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif" font-size="10" fill="#534AB7">LangGraph · CrewAI · AutoGen · Spring AI · LangChain4j</text>
+
+<path d="M235 136 L235 156" fill="none" stroke="#85B7EB" stroke-width="1.5" marker-end="url(#arrow)"/>
+<text x="248" y="149" font-family="system-ui, -apple-system, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif" font-size="10.5" fill="#185FA5">状态增量 · State Delta</text>
+
+<rect x="40" y="162" width="390" height="78" rx="10" fill="#E6F1FB" stroke="#185FA5" stroke-width="0.5"/>
+<text x="56" y="184" font-family="system-ui, -apple-system, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif" font-size="13.5" font-weight="500" fill="#0C447C">L1 · 状态采集 · State Ingestor</text>
+<text x="56" y="202" font-family="system-ui, -apple-system, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif" font-size="10.5" fill="#185FA5">从工具调用、模型输出、人工反馈中抽取原始状态事件</text>
+<text x="56" y="218" font-family="system-ui, -apple-system, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif" font-size="10" fill="#185FA5">Extract raw state events: tool calls / model output / human feedback</text>
+<text x="56" y="233" font-family="system-ui, -apple-system, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif" font-size="10" fill="#185FA5">输入 Raw events · 输出 State events</text>
+
+<path d="M235 242 L235 262" fill="none" stroke="#85B7EB" stroke-width="1.5" marker-end="url(#arrow)"/>
+<text x="248" y="255" font-family="system-ui, -apple-system, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif" font-size="10.5" fill="#185FA5">原始状态事件 · Raw State Events</text>
+
+<rect x="40" y="268" width="390" height="112" rx="10" fill="#CECBF6" stroke="#534AB7" stroke-width="1"/>
+<text x="56" y="290" font-family="system-ui, -apple-system, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif" font-size="13.5" font-weight="500" fill="#26215C">L2 · 状态编译 · State Compiler ★ 核心</text>
+<text x="56" y="307" font-family="system-ui, -apple-system, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif" font-size="10.5" fill="#3C3489">编译是纯函数，顺序即语义 · 输出最小充分集</text>
+<text x="56" y="321" font-family="system-ui, -apple-system, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif" font-size="10" fill="#3C3489">Pure function; order defines semantics · minimal sufficient set</text>
+<rect x="56" y="330" width="70" height="22" rx="5" fill="#EEEDFE" stroke="#7F77DD" stroke-width="0.5"/>
+<text x="91" y="341" font-family="system-ui, -apple-system, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif" font-size="10" fill="#3C3489" text-anchor="middle" dominant-baseline="central">约束识别</text>
+<rect x="132" y="330" width="70" height="22" rx="5" fill="#EEEDFE" stroke="#7F77DD" stroke-width="0.5"/>
+<text x="167" y="341" font-family="system-ui, -apple-system, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif" font-size="10" fill="#3C3489" text-anchor="middle" dominant-baseline="central">冲突消解</text>
+<rect x="208" y="330" width="70" height="22" rx="5" fill="#EEEDFE" stroke="#7F77DD" stroke-width="0.5"/>
+<text x="243" y="341" font-family="system-ui, -apple-system, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif" font-size="10" fill="#3C3489" text-anchor="middle" dominant-baseline="central">TTL 标记</text>
+<rect x="284" y="330" width="70" height="22" rx="5" fill="#EEEDFE" stroke="#7F77DD" stroke-width="0.5"/>
+<text x="319" y="341" font-family="system-ui, -apple-system, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif" font-size="10" fill="#3C3489" text-anchor="middle" dominant-baseline="central">最小充分集</text>
+<rect x="360" y="330" width="66" height="22" rx="5" fill="#EEEDFE" stroke="#7F77DD" stroke-width="0.5"/>
+<text x="393" y="341" font-family="system-ui, -apple-system, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif" font-size="10" fill="#3C3489" text-anchor="middle" dominant-baseline="central">预算裁剪</text>
+<text x="56" y="367" font-family="system-ui, -apple-system, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif" font-size="10" fill="#3C3489">Constraints · Conflict · TTL · Minimal set · Budget</text>
+<text x="56" y="378" font-family="system-ui, -apple-system, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif" font-size="9.5" fill="#3C3489">输出 Compiled State Contract</text>
+
+<path d="M235 382 L235 402" fill="none" stroke="#85B7EB" stroke-width="1.5" marker-end="url(#arrow)"/>
+<text x="248" y="395" font-family="system-ui, -apple-system, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif" font-size="10.5" fill="#185FA5">编译后状态契约 · Compiled State Contract</text>
+
+<rect x="40" y="408" width="390" height="84" rx="10" fill="#E6F1FB" stroke="#185FA5" stroke-width="0.5"/>
+<text x="56" y="430" font-family="system-ui, -apple-system, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif" font-size="13.5" font-weight="500" fill="#0C447C">L3 · 状态治理 · State Governance</text>
+<text x="56" y="448" font-family="system-ui, -apple-system, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif" font-size="10.5" fill="#185FA5">写入策略 / 三级压缩 / 跨会话继承 / 审计回放 / 权限视图</text>
+<text x="56" y="464" font-family="system-ui, -apple-system, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif" font-size="10" fill="#185FA5">Write policy / 3-level compaction / cross-session / audit replay / views</text>
+<text x="56" y="480" font-family="system-ui, -apple-system, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif" font-size="10" fill="#185FA5">多租户隔离 · 快照恢复 · 版本回放 · 交接</text>
+
+<path d="M235 494 L235 514" fill="none" stroke="#85B7EB" stroke-width="1.5" marker-end="url(#arrow)"/>
+<text x="248" y="507" font-family="system-ui, -apple-system, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif" font-size="10.5" fill="#185FA5">受治理状态视图 · Governed State Views</text>
+
+<rect x="40" y="520" width="390" height="78" rx="10" fill="#E6F1FB" stroke="#185FA5" stroke-width="0.5"/>
+<text x="56" y="542" font-family="system-ui, -apple-system, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif" font-size="13.5" font-weight="500" fill="#0C447C">L4 · 状态接口 · State Interfaces</text>
+<text x="56" y="559" font-family="system-ui, -apple-system, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif" font-size="10.5" fill="#185FA5">模型侧 / 程序侧 / 人工侧 / MCP</text>
+<text x="56" y="575" font-family="system-ui, -apple-system, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif" font-size="10" fill="#185FA5">Model-facing / Program-facing / Human-facing / MCP</text>
+<text x="56" y="590" font-family="system-ui, -apple-system, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif" font-size="10" fill="#185FA5">REST · SDK · MCP 15 tools · Dashboard</text>
+
+<path d="M432 200 L450 200" fill="none" stroke="#85B7EB" stroke-width="1" stroke-dasharray="3 3"/>
+<path d="M432 330 L450 330" fill="none" stroke="#85B7EB" stroke-width="1" stroke-dasharray="3 3"/>
+<path d="M432 555 L450 555" fill="none" stroke="#85B7EB" stroke-width="1" stroke-dasharray="3 3"/>
+
+<rect x="452" y="162" width="188" height="140" rx="10" fill="#E6F1FB" stroke="#185FA5" stroke-width="0.5"/>
+<text x="468" y="184" font-family="system-ui, -apple-system, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif" font-size="13" font-weight="500" fill="#0C447C">持久化存储 · Persistence</text>
+<text x="468" y="205" font-family="system-ui, -apple-system, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif" font-size="11.5" font-weight="500" fill="#185FA5">PostgreSQL</text>
+<text x="468" y="220" font-family="system-ui, -apple-system, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif" font-size="10.5" fill="#185FA5">状态 · 版本 · 快照 · 审计</text>
+<text x="468" y="234" font-family="system-ui, -apple-system, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif" font-size="10" fill="#185FA5">States · Versions · Snapshots · Audit</text>
+<text x="468" y="256" font-family="system-ui, -apple-system, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif" font-size="11.5" font-weight="500" fill="#185FA5">Redis</text>
+<text x="468" y="272" font-family="system-ui, -apple-system, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif" font-size="10.5" fill="#185FA5">热状态 · TTL · 分布式锁</text>
+<text x="468" y="286" font-family="system-ui, -apple-system, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif" font-size="10" fill="#185FA5">Hot state · TTL · Locks</text>
+
+<rect x="452" y="314" width="188" height="180" rx="10" fill="#EEEDFE" stroke="#534AB7" stroke-width="0.5"/>
+<text x="468" y="336" font-family="system-ui, -apple-system, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif" font-size="13" font-weight="500" fill="#3C3489">State Card · 四格</text>
+<rect x="466" y="346" width="160" height="28" rx="5" fill="#FFFFFF" stroke="#AFA9EC" stroke-width="0.5"/>
+<text x="474" y="357" font-family="system-ui, -apple-system, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif" font-size="10.5" fill="#3C3489">必须遵守 · Hard Constraints</text>
+<text x="474" y="369" font-family="system-ui, -apple-system, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif" font-size="9" fill="#534AB7">full / lean 均注入 · never trimmed</text>
+<rect x="466" y="376" width="160" height="28" rx="5" fill="#FFFFFF" stroke="#AFA9EC" stroke-width="0.5"/>
+<text x="474" y="387" font-family="system-ui, -apple-system, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif" font-size="10.5" fill="#3C3489">已确认 · Verified Facts</text>
+<text x="474" y="399" font-family="system-ui, -apple-system, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif" font-size="9" fill="#534AB7">带来源 · with provenance</text>
+<rect x="466" y="406" width="160" height="28" rx="5" fill="#FFFFFF" stroke="#AFA9EC" stroke-width="0.5"/>
+<text x="474" y="417" font-family="system-ui, -apple-system, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif" font-size="10.5" fill="#3C3489">待办待决 · Open Todos</text>
+<text x="474" y="429" font-family="system-ui, -apple-system, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif" font-size="9" fill="#534AB7">可按预算裁 · budget-trimmed</text>
+<rect x="466" y="436" width="160" height="28" rx="5" fill="#FFFFFF" stroke="#AFA9EC" stroke-width="0.5"/>
+<text x="474" y="447" font-family="system-ui, -apple-system, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif" font-size="10.5" fill="#3C3489">过期冲突 · Invalidated</text>
+<text x="474" y="459" font-family="system-ui, -apple-system, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif" font-size="9" fill="#534AB7">仅 audit 可见 · audit only</text>
+<text x="468" y="481" font-family="system-ui, -apple-system, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif" font-size="10" fill="#3C3489">view 决定格子 · budget 决定条数</text>
+
+<rect x="452" y="506" width="188" height="92" rx="10" fill="#E6F1FB" stroke="#185FA5" stroke-width="0.5"/>
+<text x="468" y="528" font-family="system-ui, -apple-system, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif" font-size="13" font-weight="500" fill="#0C447C">端到端实测 · E2E</text>
+<text x="468" y="546" font-family="system-ui, -apple-system, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif" font-size="10.5" fill="#185FA5">通过项 8.3 → 10.7 / 11</text>
+<text x="468" y="562" font-family="system-ui, -apple-system, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif" font-size="10.5" fill="#185FA5">一级标题 0/3 → 3/3</text>
+<text x="468" y="578" font-family="system-ui, -apple-system, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif" font-size="10.5" fill="#185FA5">禁用内容 3/3 → 0/3</text>
+<text x="468" y="592" font-family="system-ui, -apple-system, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif" font-size="9.5" fill="#185FA5">未接入 vs 接入 · N=3</text>
+
+<text x="40" y="620" font-family="system-ui, -apple-system, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif" font-size="10" fill="#5F5E5A">v0.8 · 双维裁剪：view 决定格子可见性，budget 决定 token 上限；硬约束永不裁</text>
+<text x="40" y="634" font-family="system-ui, -apple-system, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif" font-size="9.5" fill="#5F5E5A">Two-axis pruning: view = cell visibility, budget = token cap; hard constraints are never trimmed</text>
+</svg>

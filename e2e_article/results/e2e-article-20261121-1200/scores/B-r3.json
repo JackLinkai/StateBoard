@@ -1,0 +1,43 @@
+{
+  "group": "B",
+  "file": "D:\\work_space\\StateBoard\\e2e_article\\results\\e2e-article-20261121-1200\\articles\\B-r3.md",
+  "chars": 4036,
+  "cjkChars": 2575,
+  "estimatedTokens": 2940,
+  "firstLine": "今日学习计划：接着上一篇《Agent Day2：Tool Use 学习（上）——调用流程、幂等、错误处理与 Tool Registry 四域架构》往下走。上一篇把一次调用怎么走完、失败怎么分类、工具怎么注册成四域都讲过了，这一篇不回头重复。",
+  "h1s": [
+    "Tool Runtime",
+    "MCP",
+    "安全",
+    "评估"
+  ],
+  "topicsHit": [
+    "tool runtime",
+    "mcp",
+    "安全",
+    "评估"
+  ],
+  "extraH1": [],
+  "backtickSpans": 82,
+  "boldSpans": 11,
+  "forbiddenHits": {},
+  "forbiddenCount": 0,
+  "numberExprCount": 7,
+  "checks": {
+    "首行是今日学习计划": true,
+    "首行无标题标记": true,
+    "四个一级标题齐全": true,
+    "无多余一级标题": true,
+    "衔接上一篇": true,
+    "含边界段": true,
+    "固定句式收尾": true,
+    "术语用反引号>=10": true,
+    "重点加粗>=5": true,
+    "字数2500-3500": true,
+    "无禁用内容": true
+  },
+  "passed": 11,
+  "total": 11,
+  "planParagraph": "\n# Tool Runtime\n\n模型和工具之间隔着一层我越写越觉得不能省的东西。模型输出的 `tool_calls` 只是一次意图：`name` 加上 `arguments`，它既不执行，也不保证参数是对的。真正把它变成一次动作的，是 `Tool Runtime`。我后来把它理解成一个管道：一次调用进来，依次过七道—",
+  "run": "r3"
+}

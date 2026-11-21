@@ -1,0 +1,37 @@
+{
+  "group": "C",
+  "file": "D:\\work_space\\StateBoard\\e2e_article\\results\\e2e-article-20261121-1200\\articles\\C-r1.md",
+  "chars": 3720,
+  "cjkChars": 2505,
+  "estimatedTokens": 2808,
+  "firstLine": "今日学习计划：接着上一篇《Agent Day2：Tool Use 学习（上）》往下写。上一篇我把调用链路、`幂等`、`错误分类`和 `Tool Registry` 的四域架构过了一遍，算是回答了\"模型吐出一个意图之后，工具怎么被登记、怎么不",
+  "h1s": [],
+  "topicsHit": [],
+  "extraH1": [],
+  "backtickSpans": 45,
+  "boldSpans": 16,
+  "forbiddenHits": {
+    "过期工具数": [
+      "11 个工具"
+    ]
+  },
+  "forbiddenCount": 1,
+  "numberExprCount": 4,
+  "checks": {
+    "首行是今日学习计划": true,
+    "首行无标题标记": true,
+    "四个一级标题齐全": false,
+    "无多余一级标题": true,
+    "衔接上一篇": true,
+    "含边界段": true,
+    "固定句式收尾": true,
+    "术语用反引号>=10": true,
+    "重点加粗>=5": true,
+    "字数2500-3500": true,
+    "无禁用内容": false
+  },
+  "passed": 9,
+  "total": 11,
+  "planParagraph": "\n## Tool Runtime\n\n上一篇讲的是\"工具怎么被声明和登记\"，这一节讲的是\"真正干活的那层怎么设计才敢碰生产数据\"。我给它的定义就一句：把一次调用变成一次**可观测、可控制、可追责**的操作。\n\n我最早写的执行层很朴素：拿到工具名，查注册表，调函数，把结果塞回消息。跑通原型之后，我就觉得这层没什么可写的了。",
+  "run": "r1"
+}

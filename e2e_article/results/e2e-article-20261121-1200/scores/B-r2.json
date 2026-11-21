@@ -1,0 +1,43 @@
+{
+  "group": "B",
+  "file": "D:\\work_space\\StateBoard\\e2e_article\\results\\e2e-article-20261121-1200\\articles\\B-r2.md",
+  "chars": 3341,
+  "cjkChars": 2034,
+  "estimatedTokens": 2360,
+  "firstLine": "今日学习计划。这一篇接着上一篇《Agent Day2：Tool Use 学习（上）——调用流程、幂等、错误处理与 `Tool Registry` 四域架构》往下走。上一篇把 `调用流程`、`幂等`、`错误处理` 和 `Tool Regist",
+  "h1s": [
+    "Tool Runtime",
+    "MCP",
+    "安全",
+    "评估"
+  ],
+  "topicsHit": [
+    "tool runtime",
+    "mcp",
+    "安全",
+    "评估"
+  ],
+  "extraH1": [],
+  "backtickSpans": 90,
+  "boldSpans": 10,
+  "forbiddenHits": {},
+  "forbiddenCount": 0,
+  "numberExprCount": 4,
+  "checks": {
+    "首行是今日学习计划": true,
+    "首行无标题标记": true,
+    "四个一级标题齐全": true,
+    "无多余一级标题": true,
+    "衔接上一篇": true,
+    "含边界段": true,
+    "固定句式收尾": true,
+    "术语用反引号>=10": true,
+    "重点加粗>=5": true,
+    "字数2500-3500": false,
+    "无禁用内容": true
+  },
+  "passed": 10,
+  "total": 11,
+  "planParagraph": "\n# Tool Runtime\n\n## 执行层要同时做到可观测、可控制、可追责\n\n上一篇讲完 `Tool Registry` 怎么声明工具，真正难的在\"声明之后、回填之前\"这一段。`Tool Runtime` 不是一层薄薄的 `switch`，它要把一次调用变成一次**可观测、可控制、可追责**的操作。我把它拆成七个环",
+  "run": "r2"
+}

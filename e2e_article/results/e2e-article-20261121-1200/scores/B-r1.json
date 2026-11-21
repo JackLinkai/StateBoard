@@ -1,0 +1,43 @@
+{
+  "group": "B",
+  "file": "D:\\work_space\\StateBoard\\e2e_article\\results\\e2e-article-20261121-1200\\articles\\B-r1.md",
+  "chars": 4324,
+  "cjkChars": 2613,
+  "estimatedTokens": 3040,
+  "firstLine": "今日学习计划：这一篇接着上一篇（上）往下走，不重复调用流程、幂等、错误处理和 `Tool Registry` 契约，只补四块缺口——把每次调用变成可观测、可控制、可追责的 `Tool Runtime`，让多个宿主复用同一批能力的 `MCP`",
+  "h1s": [
+    "Tool Runtime",
+    "MCP",
+    "安全",
+    "评估"
+  ],
+  "topicsHit": [
+    "tool runtime",
+    "mcp",
+    "安全",
+    "评估"
+  ],
+  "extraH1": [],
+  "backtickSpans": 88,
+  "boldSpans": 15,
+  "forbiddenHits": {},
+  "forbiddenCount": 0,
+  "numberExprCount": 6,
+  "checks": {
+    "首行是今日学习计划": true,
+    "首行无标题标记": true,
+    "四个一级标题齐全": true,
+    "无多余一级标题": true,
+    "衔接上一篇": true,
+    "含边界段": true,
+    "固定句式收尾": true,
+    "术语用反引号>=10": true,
+    "重点加粗>=5": true,
+    "字数2500-3500": true,
+    "无禁用内容": true
+  },
+  "passed": 11,
+  "total": 11,
+  "planParagraph": "\n我 2024 年初转 AI，从 0 组建并带起 10 人左右的研发团队（后端 / 数据 / 前端 / 测试），先后交付的公司级 AI 项目（标书生成、称重问答）共用一套底座；出来后把工具治理那层抽成开源组件。越往后越确认一件事：**`Tool Registry` 只回答\"有哪些工具、参数长什么样\"，真正决定线上会不会",
+  "run": "r1"
+}

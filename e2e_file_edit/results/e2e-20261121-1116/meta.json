@@ -1,0 +1,8 @@
+{
+  "runId": "e2e-20261121-1116",
+  "mode": "asc",
+  "description": "ASC 状态卡驱动",
+  "startedAt": "2026-11-21T03:15:04Z",
+  "ascBaseUrl": "http://localhost:8080",
+  "contextFsBaseUrl": ""
+}

@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "asc-e2e": {
+      "command": "python",
+      "args": ["<仓库绝对路径>/mcp/asc_e2e_server.py"],
+      "env": {
+        "ASC_BASE_URL": "http://localhost:8080",
+        "ASC_TENANT": "e2e",
+        "ASC_E2E_MODE": "asc"
+      }
+    }
+  }
+}

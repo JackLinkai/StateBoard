@@ -1,0 +1,39 @@
+{
+  "taskId": "tooluse-article-day2",
+  "version": 32,
+  "hardConstraints": [],
+  "softConstraints": [],
+  "verifiedFacts": [],
+  "openTodos": [],
+  "invalidated": [
+    {
+      "id": "2164ba49-a773-41b6-b5f1-820de9d41da2",
+      "taskId": "tooluse-article-day2",
+      "reason": "EXPIRED",
+      "supersededBy": null,
+      "createdAt": "2026-11-21T03:45:08.420021Z",
+      "source": "compiler",
+      "version": 24
+    },
+    {
+      "id": "36b074cb-d84f-4408-bc2b-6cb8ddf282b4",
+      "taskId": "tooluse-article-day2",
+      "reason": "EXPIRED",
+      "supersededBy": null,
+      "createdAt": "2026-11-21T03:45:08.420021Z",
+      "source": "compiler",
+      "version": 25
+    },
+    {
+      "id": "96bebc1e-ea69-4ec7-9e53-177a2dc5d085",
+      "taskId": "tooluse-article-day2",
+      "reason": "EXPIRED",
+      "supersededBy": null,
+      "createdAt": "2026-11-21T03:45:08.420021Z",
+      "source": "compiler",
+      "version": 23
+    }
+  ],
+  "estimatedTokens": 60,
+  "compiledAt": "2026-11-21T03:45:08.420021Z"
+}

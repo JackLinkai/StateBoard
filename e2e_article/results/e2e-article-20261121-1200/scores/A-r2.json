@@ -1,0 +1,40 @@
+{
+  "group": "A",
+  "file": "D:\\work_space\\StateBoard\\e2e_article\\results\\e2e-article-20261121-1200\\articles\\A-r2.md",
+  "chars": 5726,
+  "cjkChars": 2352,
+  "estimatedTokens": 3195,
+  "firstLine": "今日学习计划",
+  "h1s": [],
+  "topicsHit": [],
+  "extraH1": [],
+  "backtickSpans": 80,
+  "boldSpans": 49,
+  "forbiddenHits": {
+    "编程语言名": [
+      "java"
+    ],
+    "过期工具数": [
+      "11 个工具"
+    ]
+  },
+  "forbiddenCount": 2,
+  "numberExprCount": 8,
+  "checks": {
+    "首行是今日学习计划": true,
+    "首行无标题标记": true,
+    "四个一级标题齐全": false,
+    "无多余一级标题": true,
+    "衔接上一篇": true,
+    "含边界段": true,
+    "固定句式收尾": true,
+    "术语用反引号>=10": true,
+    "重点加粗>=5": true,
+    "字数2500-3500": false,
+    "无禁用内容": false
+  },
+  "passed": 8,
+  "total": 11,
+  "planParagraph": "\n今天这篇是 `Tool Use` 的下半场。上一篇《Agent Day2：`Tool Use` 学习（上）——调用流程、幂等、错误处理与 `Tool Registry` 四域架构》把\"模型说要调\"和\"调完怎么回填\"讲完了，今天往前再走一步，盯四件更靠近运行时的事：**`Tool Runtime`、`MCP`、安全，以",
+  "run": "r2"
+}

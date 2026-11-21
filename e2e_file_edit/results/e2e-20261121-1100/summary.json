@@ -1,0 +1,63 @@
+{
+  "runId": "e2e-20261121-1100",
+  "generatedAt": "2026-11-21T03:14:14Z",
+  "expectedFinalState": {
+    "timeout": 50,
+    "region": "shanghai",
+    "retries": 2
+  },
+  "finalState": {
+    "baseline": {
+      "timeout": 45,
+      "region": "beijing",
+      "retries": 5
+    },
+    "asc": {
+      "timeout": 50,
+      "region": "shanghai",
+      "retries": 2
+    }
+  },
+  "finalCorrect": {
+    "baseline": false,
+    "asc": true
+  },
+  "byMode": {
+    "baseline": {
+      "steps": 3,
+      "injectedTokens": 315,
+      "constraintViolations": 2,
+      "staleFactRefs": 2,
+      "repeatedEdits": 1,
+      "resumeSteps": 3,
+      "files": [
+        "workspace/baseline/config.json",
+        "D:\\work_space\\StateBoard\\e2e_file_edit\\workspace\\baseline\\config.json"
+      ]
+    },
+    "asc": {
+      "steps": 3,
+      "injectedTokens": 153,
+      "constraintViolations": 0,
+      "staleFactRefs": 0,
+      "repeatedEdits": 0,
+      "resumeSteps": 1,
+      "files": [
+        "workspace/asc/config.json",
+        "D:\\work_space\\StateBoard\\e2e_file_edit\\workspace\\asc\\config.json"
+      ]
+    },
+    "governance": {
+      "steps": 1,
+      "injectedTokens": 0,
+      "constraintViolations": 0,
+      "staleFactRefs": 0,
+      "repeatedEdits": 0,
+      "resumeSteps": 0,
+      "files": [
+        "D:\\work_space\\StateBoard\\e2e_file_edit\\contextfs\\task\\e2e-20261121-1100-asc\\snapshots\\v11.json"
+      ]
+    }
+  },
+  "traceCount": 7
+}

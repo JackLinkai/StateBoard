@@ -1,0 +1,15 @@
+{
+  "runId": "e2e-article-20261121-1200",
+  "taskId": "tooluse-article-day2",
+  "title": "Agent Day2：Tool Use 学习（下）——Tool Runtime、MCP、安全与评估",
+  "baseUrl": "http://localhost:8080",
+  "datasource": "PostgreSQL + Redis (.env, 地址不入库)",
+  "leanTokens": 362,
+  "auditTokens": 60,
+  "artifacts": {
+    "A": "e2e_article\\results\\e2e-article-20261121-1200\\contexts\\A.md",
+    "B": "e2e_article\\results\\e2e-article-20261121-1200\\contexts\\B.md",
+    "C": "e2e_article\\results\\e2e-article-20261121-1200\\contexts\\C.md"
+  },
+  "note": "三组素材路径与任务描述完全相同，唯一差异是注入的上下文包"
+}

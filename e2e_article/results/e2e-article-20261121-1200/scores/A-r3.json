@@ -1,0 +1,41 @@
+{
+  "group": "A",
+  "file": "D:\\work_space\\StateBoard\\e2e_article\\results\\e2e-article-20261121-1200\\articles\\A-r3.md",
+  "chars": 6200,
+  "cjkChars": 2535,
+  "estimatedTokens": 3451,
+  "firstLine": "今日学习计划",
+  "h1s": [],
+  "topicsHit": [],
+  "extraH1": [],
+  "backtickSpans": 102,
+  "boldSpans": 65,
+  "forbiddenHits": {
+    "编程语言名": [
+      "java",
+      "python"
+    ],
+    "后端数字": [
+      "可用性"
+    ]
+  },
+  "forbiddenCount": 3,
+  "numberExprCount": 11,
+  "checks": {
+    "首行是今日学习计划": true,
+    "首行无标题标记": true,
+    "四个一级标题齐全": false,
+    "无多余一级标题": true,
+    "衔接上一篇": true,
+    "含边界段": true,
+    "固定句式收尾": true,
+    "术语用反引号>=10": true,
+    "重点加粗>=5": true,
+    "字数2500-3500": true,
+    "无禁用内容": false
+  },
+  "passed": 9,
+  "total": 11,
+  "planParagraph": "\n今天是 `Agent Day2` 的下半场。\n\n上一篇《Agent Day2：Tool Use 学习（上）》我把 `Function Calling` 的调用流程、幂等、错误处理，还有 `Tool Registry` 那套四域架构过了一遍。后台有读者问我一句：\"模型输出一个 `tool_calls` 不就完了吗，为什",
+  "run": "r3"
+}

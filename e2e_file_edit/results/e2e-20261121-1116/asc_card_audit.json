@@ -1,0 +1,40 @@
+{
+  "taskId": "e2e-20261121-1116-asc",
+  "version": 9,
+  "hardConstraints": [],
+  "softConstraints": [
+    {
+      "id": "8b8d6a1e-c109-4f2c-853b-c93e226860c6",
+      "taskId": "e2e-20261121-1116-asc",
+      "text": "尽量把 retries 改成 5",
+      "level": "SOFT",
+      "createdAt": "2026-11-21T03:15:04.677621Z",
+      "source": "user",
+      "version": 4
+    }
+  ],
+  "verifiedFacts": [],
+  "openTodos": [],
+  "invalidated": [
+    {
+      "id": "38b9a11d-5567-45e1-97cb-5c531a2a6985",
+      "taskId": "e2e-20261121-1116-asc",
+      "reason": "EXPIRED",
+      "supersededBy": null,
+      "createdAt": "2026-11-21T03:15:04.900984Z",
+      "source": "compiler",
+      "version": 7
+    },
+    {
+      "id": "d7cf738a-30a0-469a-8e39-62b62b5448dc",
+      "taskId": "e2e-20261121-1116-asc",
+      "reason": "SUPERSEDED",
+      "supersededBy": "667911c8-a42f-4167-8038-5c25be09e3dd",
+      "createdAt": "2026-11-21T03:15:04.900984Z",
+      "source": "compiler",
+      "version": 5
+    }
+  ],
+  "estimatedTokens": 44,
+  "compiledAt": "2026-11-21T03:15:04.900984Z"
+}

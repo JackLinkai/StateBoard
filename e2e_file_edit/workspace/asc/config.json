@@ -1,0 +1,5 @@
+{
+  "timeout": 50,
+  "region": "shanghai",
+  "retries": 2
+}

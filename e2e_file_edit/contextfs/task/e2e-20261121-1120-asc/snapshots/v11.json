@@ -1,0 +1,93 @@
+{
+  "uri": "ctxfs://task/e2e-20261121-1120-asc/snapshots/v11.md",
+  "owner": "asc",
+  "version": 11,
+  "visibility": "private",
+  "agent_binding": "asc-file-editor",
+  "created_at": "2026-11-21T03:17:07Z",
+  "source_task": "e2e-20261121-1120-asc",
+  "run_id": "e2e-20261121-1120",
+  "card": {
+    "taskId": "e2e-20261121-1120-asc",
+    "version": 11,
+    "hardConstraints": [
+      {
+        "id": "97844f14-8b63-4b12-92a5-e277266481e2",
+        "taskId": "e2e-20261121-1120-asc",
+        "text": "只允许修改 config.json 的 timeout 字段",
+        "level": "HARD",
+        "createdAt": "2026-11-21T03:17:05.652703Z",
+        "source": "user",
+        "version": 1
+      },
+      {
+        "id": "04e85621-61df-462c-9987-c894c28f7a28",
+        "taskId": "e2e-20261121-1120-asc",
+        "text": "禁止删除任何文件",
+        "level": "HARD",
+        "createdAt": "2026-11-21T03:17:05.719604Z",
+        "source": "user",
+        "version": 2
+      },
+      {
+        "id": "d7d0b8c7-dfba-4f7f-a76c-64d387070f7a",
+        "taskId": "e2e-20261121-1120-asc",
+        "text": "每次修改前先记待办，改完标记完成",
+        "level": "HARD",
+        "createdAt": "2026-11-21T03:17:05.734573Z",
+        "source": "user",
+        "version": 3
+      }
+    ],
+    "softConstraints": [
+      {
+        "id": "dd6e2df9-712d-47a5-abe6-30ad0c33bc86",
+        "taskId": "e2e-20261121-1120-asc",
+        "text": "尽量把 retries 改成 5",
+        "level": "SOFT",
+        "createdAt": "2026-11-21T03:17:05.747606Z",
+        "source": "user",
+        "version": 4
+      }
+    ],
+    "verifiedFacts": [
+      {
+        "id": "2c119840-4212-4b8c-982e-e75548d69a64",
+        "taskId": "e2e-20261121-1120-asc",
+        "key": "timeout_target",
+        "value": "50",
+        "createdAt": "2026-11-21T03:17:05.830378Z",
+        "expiresAt": null,
+        "source": "tool:final",
+        "version": 6
+      }
+    ],
+    "openTodos": [],
+    "invalidated": [
+      {
+        "id": "75ac3ce0-be0a-4807-a285-242287e7881a",
+        "taskId": "e2e-20261121-1120-asc",
+        "reason": "EXPIRED",
+        "supersededBy": null,
+        "createdAt": "2026-11-21T03:17:07.055520900Z",
+        "source": "compiler",
+        "version": 7
+      },
+      {
+        "id": "eec2ab33-646e-4b2f-a454-668d330649aa",
+        "taskId": "e2e-20261121-1120-asc",
+        "reason": "SUPERSEDED",
+        "supersededBy": "2c119840-4212-4b8c-982e-e75548d69a64",
+        "createdAt": "2026-11-21T03:17:07.055520900Z",
+        "source": "compiler",
+        "version": 5
+      }
+    ],
+    "estimatedTokens": 62,
+    "compiledAt": "2026-11-21T03:17:07.055520900Z"
+  },
+  "lineage": {
+    "asc_replay": "/v1/tasks/e2e-20261121-1120-asc/replay?version=11",
+    "asc_snapshot": "/v1/tasks/e2e-20261121-1120-asc/snapshot"
+  }
+}

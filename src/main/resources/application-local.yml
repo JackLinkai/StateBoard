@@ -1,0 +1,27 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:asc;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: ''
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    open-in-view: false
+  flyway:
+    enabled: false
+  data:
+    redis:
+      host: 127.0.0.1
+      port: 6399
+      connect-timeout: 1s
+      timeout: 1s
+
+asc:
+  compiler:
+    default-budget-tokens: 1200
+
+management:
+  health:
+    redis:
+      enabled: false
