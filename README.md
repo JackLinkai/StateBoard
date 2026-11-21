@@ -10,6 +10,7 @@
   <img src="docs/assets/logo.jpg" alt="logo" width="360">  
 </p>
 </div>
+
 ![Status](https://img.shields.io/badge/status-early%20development-orange)
 
 ![Java](https://img.shields.io/badge/Java-21-blue)
