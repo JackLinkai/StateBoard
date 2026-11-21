@@ -1,0 +1,43 @@
+{
+  "group": "D",
+  "file": "results\\e2e-article-20261121-1200\\articles\\D-r2.md",
+  "chars": 4636,
+  "cjkChars": 2556,
+  "estimatedTokens": 3076,
+  "firstLine": "今日学习计划：把 `Tool Use` 的下半场补完。上一篇《Agent Day2：`Tool Use` 学习（上）》已经把调用流程、幂等、错误分类和 `Tool Registry` 四域架构讲透了，我当时想的是——真正决定它能不能上生产的",
+  "h1s": [
+    "Tool Runtime",
+    "MCP",
+    "安全",
+    "评估"
+  ],
+  "topicsHit": [
+    "tool runtime",
+    "mcp",
+    "安全",
+    "评估"
+  ],
+  "extraH1": [],
+  "backtickSpans": 124,
+  "boldSpans": 19,
+  "forbiddenHits": {},
+  "forbiddenCount": 0,
+  "numberExprCount": 8,
+  "checks": {
+    "首行是今日学习计划": true,
+    "首行无标题标记": true,
+    "四个一级标题齐全": true,
+    "无多余一级标题": true,
+    "衔接上一篇": true,
+    "含边界段": true,
+    "固定句式收尾": true,
+    "术语用反引号>=10": true,
+    "重点加粗>=5": true,
+    "字数2500-3500": true,
+    "无禁用内容": true
+  },
+  "passed": 11,
+  "total": 11,
+  "planParagraph": "\n# Tool Runtime\n\n上一篇讲的是声明层——工具怎么描述、怎么注册。这一节讲的是执行层。我给它的定义只有一句：`Tool Runtime` 是把一次调用变成一个**可观测、可控制、可追责**的操作的那层代码。\n\n## 我试过的错：把执行层当透传\n\n最早我的实现特别简单：拿到 `tool_calls` 里的 ",
+  "run": "r2"
+}

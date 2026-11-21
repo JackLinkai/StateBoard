@@ -1,0 +1,47 @@
+{
+  "group": "D",
+  "file": "results\\e2e-article-20261121-1200\\articles\\D-r1.md",
+  "chars": 3597,
+  "cjkChars": 2247,
+  "estimatedTokens": 2584,
+  "firstLine": "今日学习计划：上一篇《Agent Day2：Tool Use 学习（上）》把调用流程、幂等、错误处理与 `Tool Registry` 那套结构讲完了，这一篇往下再走一层。我这两天一直在想同一个问题：模型说\"我要调这个工具\"之后，**凭什么",
+  "h1s": [
+    "Tool Runtime",
+    "MCP",
+    "安全",
+    "评估"
+  ],
+  "topicsHit": [
+    "tool runtime",
+    "mcp",
+    "安全",
+    "评估"
+  ],
+  "extraH1": [],
+  "backtickSpans": 53,
+  "boldSpans": 9,
+  "forbiddenHits": {
+    "过期工具数": [
+      "11 个工具"
+    ]
+  },
+  "forbiddenCount": 1,
+  "numberExprCount": 10,
+  "checks": {
+    "首行是今日学习计划": true,
+    "首行无标题标记": true,
+    "四个一级标题齐全": true,
+    "无多余一级标题": true,
+    "衔接上一篇": true,
+    "含边界段": true,
+    "固定句式收尾": true,
+    "术语用反引号>=10": true,
+    "重点加粗>=5": true,
+    "字数2500-3500": false,
+    "无禁用内容": false
+  },
+  "passed": 9,
+  "total": 11,
+  "planParagraph": "\n# Tool Runtime\n\n模型输出的 `tool_calls` 只是调用意图，真正的执行永远发生在你自己的代码里。这句上篇说过，这里不重复。我今天想讲的是意图之后那个执行层：它要把一次调用，变成一次可观测、可控制、可追责的操作。\n\n我当时想的是，这不就是一次简单分发吗。真正上手才发现要管的有七件事，顺序还不能乱",
+  "run": "r1"
+}

@@ -1,0 +1,33 @@
+{
+  "group": "D",
+  "file": "results\\e2e-article-20261121-1200\\articles\\D-r3.md",
+  "chars": 4113,
+  "cjkChars": 2677,
+  "estimatedTokens": 3036,
+  "firstLine": "今日学习计划",
+  "h1s": [],
+  "topicsHit": [],
+  "extraH1": [],
+  "backtickSpans": 56,
+  "boldSpans": 25,
+  "forbiddenHits": {},
+  "forbiddenCount": 0,
+  "numberExprCount": 6,
+  "checks": {
+    "首行是今日学习计划": true,
+    "首行无标题标记": true,
+    "四个一级标题齐全": false,
+    "无多余一级标题": true,
+    "衔接上一篇": true,
+    "含边界段": true,
+    "固定句式收尾": true,
+    "术语用反引号>=10": true,
+    "重点加粗>=5": true,
+    "字数2500-3500": true,
+    "无禁用内容": true
+  },
+  "passed": 10,
+  "total": 11,
+  "planParagraph": "\n今天的学习目标有四个：把 `Tool Runtime` 讲成一个可观测、可控制、可追责的执行层；把 `MCP` 的组合爆炸问题、三个角色和三类能力讲透；把鉴权、越权、返回体积和版本协商这几条安全边界摆清楚；最后，用我自己测出来的数，回答评估里最难的那个问题——改完到底有没有用。涉及的术语我会用反引号括起来，重点结论加",
+  "run": "r3"
+}

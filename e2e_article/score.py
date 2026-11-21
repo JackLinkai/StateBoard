@@ -1,4 +1,4 @@
-"""推文三组对照的客观判分器。
+"""推文四组对照的客观判分器。
 
 判据全部来自用户明确要求与 ASC 状态卡里的硬约束，不做主观质量打分。
 用法：python score.py
@@ -92,7 +92,7 @@ def score_one(name: str) -> dict:
     passed = sum(checks.values())
     return {
         "group": name,
-        "file": str(path),
+        "file": str(path.relative_to(ROOT)),
         "chars": len(text),
         "cjkChars": count_cjk(text),
         "estimatedTokens": estimate_tokens(text),
@@ -113,19 +113,22 @@ def score_one(name: str) -> dict:
 
 
 def main() -> None:
-    results = {name: score_one(name) for name in ("A", "B", "C")}
-    for name, r in results.items():
-        (SCORES / f"{name}.json").write_text(
+    # 单篇判分说明取各组 r3 样本；N=3 汇总由 score_multi.py 生成 summary.md
+    samples = {g: f"{g}-r3" for g in "ABCD"}
+    results = {g: score_one(name) for g, name in samples.items()}
+    for g, r in results.items():
+        (SCORES / f"{g}.json").write_text(
             json.dumps(r, ensure_ascii=False, indent=2), encoding="utf-8")
 
-    lines = ["# Tool Use 推文对照实验 · 客观判分", "",
-             "判据来自任务书与 ASC 硬约束，不含主观质量分。", "",
-             "| 指标 | A 未接入 | B 接入 ASC | C 无治理 |",
-             "|---|---:|---:|---:|"]
+    lines = ["# Tool Use 推文对照实验 · 客观判分（各组 r3 样本）", "",
+             "判据来自任务书与 ASC 硬约束，不含主观质量分。",
+             "逐篇 N=3 汇总见 summary.md。", "",
+             "| 指标 | A 未接入 | B 接入 ASC | C 无治理 | D 自检 |",
+             "|---|---:|---:|---:|---:|"]
     metric_rows = [
         ("通过项 / 11", lambda r: f"{r['passed']}/{r['total']}"),
         ("中文字符数", lambda r: r["cjkChars"]),
-        ("估算 token", lambda r: r["estimatedTokens"]),
+        ("估算 token（成品输出）", lambda r: r["estimatedTokens"]),
         ("反引号术语数", lambda r: r["backtickSpans"]),
         ("加粗数", lambda r: r["boldSpans"]),
         ("禁用内容类别数", lambda r: len(r["forbiddenHits"])),
@@ -134,10 +137,10 @@ def main() -> None:
         ("数字表达数", lambda r: r["numberExprCount"]),
     ]
     for label, fn in metric_rows:
-        lines.append(f"| {label} | " + " | ".join(str(fn(results[n])) for n in "ABC") + " |")
+        lines.append(f"| {label} | " + " | ".join(str(fn(results[n])) for n in "ABCD") + " |")
 
     lines += ["", "## 逐项判定", ""]
-    for name in "ABC":
+    for name in "ABCD":
         r = results[name]
         lines.append(f"### {name} 组")
         lines.append("")
@@ -153,11 +156,12 @@ def main() -> None:
     lines += [
         "## 口径",
         "",
-        "1. 三组素材路径、任务描述完全相同，唯一差异是注入的上下文包。",
-        "2. token 为中文字符数 + 非中文字符数除以 4，仅用于相对比较。",
+        "1. 四组素材路径、任务描述完全相同，唯一差异是注入的上下文包；D 为后补的 agent.md 自检组。",
+        "2. token 为中文字符数 + 非中文字符数除以 4，仅用于相对比较，且只算成品输出；真实 API usage 未记录。",
         "3. 禁用内容包括素材中真实存在的旧值（旧版材料、旧的工具数量口径、含编程语言名的旧账号名），",
         "   它们不是模型凭空编造，而是素材冲突是否被治理拦住的证据。",
-        "4. 可读性、吸引力不做机器判分，由人工在 A/B/C 三稿里选一篇作为最终交付。",
+        "4. 可读性、吸引力不做机器判分，由人工在 B 组三稿里选一篇作为最终交付。",
+        "5. D 组由隔离的子代理会话生成，A/B/C 为当时的 WorkBuddy 会话，环境不同，只作方向性参考。",
         "",
     ]
     (BASE / "objective.md").write_text("\n".join(lines), encoding="utf-8")

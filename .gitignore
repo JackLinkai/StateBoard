@@ -51,6 +51,8 @@ dashboard/*.local
 src/main/resources/static/
 ### Benchmarks 本地结果 ###
 benchmarks/results*.json
+# D 组复跑包：把占位符替换成本机素材绝对路径，仅本地使用
+e2e_article/results/**/contexts/*.local.md
 
 ### 第三方上游代码（体积大、自带 .git，由使用者自行 clone） ###
 vendor/
